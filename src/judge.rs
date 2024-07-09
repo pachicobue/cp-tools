@@ -1,5 +1,5 @@
-use ::anyhow::Result;
 use std::path::{Path, PathBuf};
+use ::{anyhow::Result, reqwest::Url};
 
 const INPUT_EXT: &str = "in";
 const OUTPUT_EXT: &str = "out";
@@ -33,6 +33,15 @@ impl TestCase {
             .map(|f| TestCase::from_name(dir, f.file_name().to_str().unwrap()))
             .collect())
     }
+}
+
+pub(crate) enum JudgeType {
+    Batch,
+}
+
+pub(crate) struct ProblemInfo {
+    pub url: Url,
+    pub test_cases: Vec<TestCase>,
 }
 
 pub(crate) struct Judge {

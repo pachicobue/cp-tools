@@ -1,6 +1,9 @@
 use crate::{
     config,
-    utility::compile::{CompileCommand, CompileMode},
+    utility::{
+        compile::{CompileCommand, CompileMode},
+        dummy_headers,
+    },
 };
 use std::{
     fs,
@@ -9,6 +12,7 @@ use std::{
 use ::{
     anyhow::{ensure, Result},
     clap::Args,
+    regex::Regex,
 };
 
 #[derive(Args, Debug)]
@@ -37,13 +41,23 @@ pub(crate) async fn expand(args: &ExpandArgs) -> Result<()> {
     log::info!("Expanding {} ...", args.file);
     check_args(args)?;
 
+    let dummy_header_dir = dummy_headers::generate().await?;
+
     let dst = match &args.output {
         Some(s) => PathBuf::from(&s),
         None => default_output(),
     };
     let mut command = CompileCommand::load_config(CompileMode::Expand)?;
     command.src = Some(args.file.clone().into());
-    let output = "#include <bits/stdc++.h>\n".to_string() + &command.exec_compile().await?;
+    command.include_dirs.push(dummy_header_dir);
+    let output = command.exec_compile().await?;
+    log::trace!("Intermediate output: {}", output);
+    let output = Regex::new(r"#pragma INCLUDE<(.+)>")?
+        .replace_all(&output, |caps: &regex::Captures| {
+            let path = Path::new(&caps[1]);
+            format!("#include <{}>", path.display())
+        })
+        .to_string();
     fs::write(dst.clone(), output)?;
 
     log::info!("Expanded to {} .", dst.display());

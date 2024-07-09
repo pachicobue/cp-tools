@@ -26,8 +26,8 @@ impl CompOpts {
         CompOpts {
             compiler: "clang++".to_string(),
             include_directories: [
-                "~/ghq/github.com/pachicobue/algolib/src",
-                "~/ghq/github.com/atcoder/ac-library",
+                "/home/sho/ghq/github.com/pachicobue/algolib/src",
+                "/home/sho/ghq/github.com/atcoder/ac-library",
             ]
             .iter()
             .map(|s| s.to_string())

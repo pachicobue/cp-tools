@@ -29,7 +29,7 @@ pub(crate) fn init() -> Result<()> {
             ))
         })
         .level(log::LevelFilter::Warn)
-        .level_for("cp_tools", log::LevelFilter::Trace)
+        .level_for("cp_tools", log::LevelFilter::Info)
         .chain(std::io::stdout())
         .apply()?)
 }

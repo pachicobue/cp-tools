@@ -67,8 +67,14 @@ impl CompileCommand {
         if let Some(src) = &self.src {
             args.push(src.to_string_lossy().into_owned());
         }
-        log::trace!("{} {}", self.compiler, args.join(" "));
+        log::info!("{} {}", self.compiler, args.join(" "));
         let output = Command::new(&self.compiler).args(&args).output().await?;
-        Ok(String::from_utf8(output.stdout)?)
+        let stderr = String::from_utf8(output.stderr)?;
+        if !stderr.is_empty() {
+            log::error!("{}", stderr);
+            Err(anyhow::anyhow!("Compile error"))
+        } else {
+            Ok(String::from_utf8(output.stdout)?)
+        }
     }
 }

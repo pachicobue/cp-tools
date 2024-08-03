@@ -1,17 +1,21 @@
 use crate::oj_client;
-use ::{anyhow::Result, clap::Args, reqwest::Url};
+use ::{
+    clap::{Args, ValueHint},
+    color_eyre::eyre::Result,
+    url::Url,
+};
 
 #[derive(Args, Debug)]
 pub(crate) struct LoginArgs {
     /// URL
-    #[arg(required = true)]
+    #[arg(required = true ,value_hint = ValueHint::Url)]
     url: Url,
 }
 
-pub(crate) async fn login(args: &LoginArgs) -> Result<()> {
+pub(crate) fn login(args: &LoginArgs) -> Result<()> {
     log::info!("Logging in to {}...", args.url);
     check_args(args)?;
-    oj_client::login(&args.url).await?;
+    oj_client::login(&args.url)?;
     Ok(())
 }
 

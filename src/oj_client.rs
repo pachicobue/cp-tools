@@ -3,14 +3,14 @@ mod base_client;
 
 use crate::oj_client::atcoder::{AtcoderClient, ATCODER_HOST};
 use ::{
-    anyhow::{Context as _, Result},
-    reqwest::Url,
+    color_eyre::eyre::{OptionExt, Result},
+    url::Url,
 };
 
 trait OjClient: Sized {
     fn new() -> Result<Self>;
-    async fn login(&self) -> Result<()>;
-    async fn get_problem_info(&self, url: &Url) -> Result<ProblemInfo>;
+    fn login(&self) -> Result<()>;
+    fn get_problem_info(&self, url: &Url) -> Result<ProblemInfo>;
 }
 
 #[derive(Debug)]
@@ -25,24 +25,24 @@ pub(crate) struct SampleInfo {
     pub outputs: Vec<String>,
 }
 
-async fn login_gen<O: OjClient>() -> Result<()> {
-    O::new()?.login().await
+fn login_gen<O: OjClient>() -> Result<()> {
+    O::new()?.login()
 }
 
-async fn get_problem_info_gen<O: OjClient>(url: &Url) -> Result<ProblemInfo> {
-    O::new()?.get_problem_info(url).await
+fn get_problem_info_gen<O: OjClient>(url: &Url) -> Result<ProblemInfo> {
+    O::new()?.get_problem_info(url)
 }
 
-pub(crate) async fn login(url: &Url) -> Result<()> {
-    match url.host_str().context("Invalid URL")? {
-        ATCODER_HOST => login_gen::<AtcoderClient>().await,
+pub(crate) fn login(url: &Url) -> Result<()> {
+    match url.host_str().ok_or_eyre("Invalid URL")? {
+        ATCODER_HOST => login_gen::<AtcoderClient>(),
         _ => unimplemented!(),
     }
 }
 
-pub(crate) async fn get_problem_info(url: &Url) -> Result<ProblemInfo> {
-    match url.host_str().context("Invalid URL")? {
-        ATCODER_HOST => get_problem_info_gen::<AtcoderClient>(url).await,
+pub(crate) fn get_problem_info(url: &Url) -> Result<ProblemInfo> {
+    match url.host_str().ok_or_eyre("Invalid URL")? {
+        ATCODER_HOST => get_problem_info_gen::<AtcoderClient>(url),
         _ => unimplemented!(),
     }
 }

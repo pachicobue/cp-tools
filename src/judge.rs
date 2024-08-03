@@ -1,5 +1,5 @@
 use std::path::{Path, PathBuf};
-use ::{anyhow::Result, reqwest::Url};
+use ::{color_eyre::eyre::Result, url::Url};
 
 const INPUT_EXT: &str = "in";
 const OUTPUT_EXT: &str = "out";

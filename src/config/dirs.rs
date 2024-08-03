@@ -1,5 +1,5 @@
 use std::{fs, path::PathBuf};
-use ::{anyhow::Result, dirs_next};
+use ::{color_eyre::eyre::Result, dirs_next};
 
 pub(crate) fn workspace_dir() -> PathBuf {
     dirs_next::data_local_dir().unwrap().join("cp_tools")

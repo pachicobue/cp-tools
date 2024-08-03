@@ -5,26 +5,35 @@ use std::{
     path::{Path, PathBuf},
 };
 use ::{
-    anyhow::{ensure, Result},
+    color_eyre::eyre::{ensure, OptionExt, Result},
+    duct::cmd,
     regex::Regex,
-    tokio::process::Command,
 };
 
-pub(crate) async fn generate() -> Result<PathBuf> {
+pub(crate) fn generate() -> Result<PathBuf> {
+    log::debug!("Generate dummy headers.");
     let dst_dir = config::dirs::workspace_dir().join("dummy_headers");
-    let src_dir = Path::new("/usr/include/c++").join(get_gcc_version().await?);
+    let src_dir = Path::new("/usr/include/c++").join(get_gcc_version()?);
     generate_dummy_headers(&dst_dir, &src_dir)?;
     Ok(dst_dir.to_path_buf())
 }
 
-async fn get_gcc_version() -> Result<String> {
-    let output = Command::new("gcc").arg("--version").output().await?.stdout;
-    let output = String::from_utf8(output).unwrap();
-    let re: Regex = Regex::new(r"(\d+\.\d+\.\d+)").unwrap();
-    Ok(re.captures(&output).unwrap()[0].to_string())
+fn get_gcc_version() -> Result<String> {
+    log::debug!("$ gcc --version");
+    let output = cmd!("gcc", "--version").read()?;
+    let re = Regex::new(r"(\d+\.\d+\.\d+)").unwrap();
+    Ok(re
+        .captures(&output)
+        .ok_or_eyre("Failed to capture gcc version")?[0]
+        .to_string())
 }
 
 fn generate_dummy_headers(dst_dir: &Path, src_dir: &Path) -> Result<()> {
+    log::debug!(
+        "Create dummy headers\n{} -> {}",
+        src_dir.to_string_lossy(),
+        dst_dir.to_string_lossy()
+    );
     ensure!(
         src_dir.exists(),
         "Directory {} not found.",
@@ -32,9 +41,9 @@ fn generate_dummy_headers(dst_dir: &Path, src_dir: &Path) -> Result<()> {
     );
 
     let mut file_paths = Vec::new();
-    log::info!("Gathering headers from {} ...", src_dir.display());
+    log::trace!("original header path: {}", src_dir.display());
     gather_files(src_dir, &mut file_paths)?;
-    log::debug!("Gatherd headers: {:?}", file_paths);
+    log::trace!("header_list: {:?}", file_paths);
     for path in file_paths {
         let relative = path.strip_prefix(src_dir).unwrap();
         let dst_path = dst_dir.join(relative);

@@ -1,7 +1,7 @@
 use crate::config;
 use std::{fs, path::PathBuf};
 use ::{
-    anyhow::Result,
+    color_eyre::eyre::Result,
     serde::{Deserialize, Serialize},
 };
 
@@ -55,7 +55,7 @@ pub(crate) fn init() -> Result<()> {
     let json = serde_json::to_string_pretty(&opt)?;
     fs::write(&path, json.as_bytes())?;
     log::warn!(
-        "{} created with default settings. Please edit it.",
+        "{} does not exist!\nCreated with default settings. Please edit it.",
         path.to_string_lossy()
     );
     Ok(())

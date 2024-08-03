@@ -1,6 +1,6 @@
 use crate::config::compile_opts;
 use std::path::PathBuf;
-use ::{anyhow::Result, tokio::process::Command};
+use ::{color_eyre::eyre::Result, duct::cmd};
 
 #[derive(Debug)]
 pub(crate) enum CompileMode {
@@ -50,7 +50,7 @@ impl CompileCommand {
             dst: None,
         })
     }
-    pub async fn exec_compile(&self) -> Result<String> {
+    pub fn exec_compile(&self) -> Result<String> {
         let mut args = self.opts.clone();
         for dir in &self.include_dirs {
             args.push("-I".to_string());
@@ -67,14 +67,7 @@ impl CompileCommand {
         if let Some(src) = &self.src {
             args.push(src.to_string_lossy().into_owned());
         }
-        log::info!("{} {}", self.compiler, args.join(" "));
-        let output = Command::new(&self.compiler).args(&args).output().await?;
-        let stderr = String::from_utf8(output.stderr)?;
-        if !stderr.is_empty() {
-            log::error!("{}", stderr);
-            Err(anyhow::anyhow!("Compile error"))
-        } else {
-            Ok(String::from_utf8(output.stdout)?)
-        }
+        log::debug!("$ {} {}", self.compiler, args.join(" "));
+        Ok(cmd(&self.compiler, &args).read()?)
     }
 }

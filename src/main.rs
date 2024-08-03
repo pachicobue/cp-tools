@@ -14,8 +14,9 @@ use crate::{
     command::login::{login, LoginArgs},
 };
 use ::{
-    anyhow::Result,
     clap::{Parser, Subcommand},
+    clap_verbosity_flag::{InfoLevel, Verbosity},
+    color_eyre::eyre::Result,
 };
 
 /// コマンドライン引数
@@ -23,6 +24,8 @@ use ::{
 #[command(author, version, about, long_about=None)]
 #[command(propagate_version = true)]
 pub(crate) struct Cli {
+    #[clap(flatten)]
+    verbose: Verbosity<InfoLevel>,
     #[command(subcommand)]
     command: Commands,
 }
@@ -35,29 +38,28 @@ enum Commands {
     Build(BuildArgs),
     /// サンプルケースをダウンロードする
     Download(DownloadArgs),
-    ///　オンラインジャッジにログインする
+    /// オンラインジャッジにログインする
     Login(LoginArgs),
     /// シェル補完関数を生成する
     Completion(CompletionArgs),
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
-    config::init()?;
-
+fn main() -> Result<()> {
     let args = Cli::parse();
+
+    config::init(args.verbose.log_level_filter())?;
     match args.command {
         Commands::Expand(args) => {
-            expand(&args).await?;
+            expand(&args)?;
         }
         Commands::Build(args) => {
-            build(&args).await?;
+            build(&args)?;
         }
         Commands::Download(args) => {
-            download(&args).await?;
+            download(&args)?;
         }
         Commands::Login(args) => {
-            login(&args).await?;
+            login(&args)?;
         }
         Commands::Completion(args) => {
             print_completion(args.shell);

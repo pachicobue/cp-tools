@@ -1,6 +1,7 @@
 use crate::{
     config,
     utility::{
+        beautify::beautify,
         compile::{CompileCommand, CompileMode},
         dummy_headers,
     },
@@ -10,20 +11,21 @@ use std::{
     path::{Path, PathBuf},
 };
 use ::{
-    anyhow::{ensure, Result},
-    clap::Args,
+    clap::{Args, ValueHint},
+    color_eyre::eyre::{ensure, Result},
+    console::style,
     regex::Regex,
 };
 
 #[derive(Args, Debug)]
 pub(crate) struct ExpandArgs {
     /// 入力ファイル(.cppのみ対応)
-    #[arg(required = true)]
-    file: String,
+    #[arg(required = true, value_hint = ValueHint::FilePath)]
+    file: PathBuf,
 
     /// 出力先ファイル
-    #[arg(short = 'o', long)]
-    output: Option<String>,
+    #[arg(short = 'o', long, value_hint = ValueHint::FilePath)]
+    output: Option<PathBuf>,
 }
 
 /// #includeの展開処理を行う
@@ -37,30 +39,24 @@ pub(crate) struct ExpandArgs {
 /// - 展開処理の結果は`output`で指定されたファイルに出力される
 ///   - `output`が指定されない場合は、`Bundled.cpp`に出力される
 ///
-pub(crate) async fn expand(args: &ExpandArgs) -> Result<()> {
-    log::info!("Expanding {} ...", args.file);
+pub(crate) fn expand(args: &ExpandArgs) -> Result<()> {
+    log::info!("{}\n{:?}", style("Expand program").bold().green(), args);
     check_args(args)?;
 
-    let dummy_header_dir = dummy_headers::generate().await?;
+    let dummy_header_dir = dummy_headers::generate()?;
 
     let dst = match &args.output {
         Some(s) => PathBuf::from(&s),
         None => default_output(),
     };
     let mut command = CompileCommand::load_config(CompileMode::Expand)?;
-    command.src = Some(args.file.clone().into());
+    command.src = Some(args.file.clone());
     command.include_dirs.push(dummy_header_dir);
-    let output = command.exec_compile().await?;
-    log::trace!("Intermediate output: {}", output);
-    let output = Regex::new(r"#pragma INCLUDE<(.+)>")?
-        .replace_all(&output, |caps: &regex::Captures| {
-            let path = Path::new(&caps[1]);
-            format!("#include <{}>", path.display())
-        })
-        .to_string();
-    fs::write(dst.clone(), output)?;
+    let output = command.exec_compile()?;
 
-    log::info!("Expanded to {} .", dst.display());
+    beautify(&output, &dst)?;
+
+    log::info!("End expand: {} -> {} .", args.file.display(), dst.display());
     Ok(())
 }
 
@@ -70,12 +66,12 @@ fn default_output() -> PathBuf {
 
 fn check_args(args: &ExpandArgs) -> Result<()> {
     ensure!(
-        Path::new(&args.file).exists(),
+        args.file.exists(),
         "Input File {} not found.",
-        args.file
+        args.file.to_string_lossy()
     );
     ensure!(
-        args.file.ends_with(".cpp"),
+        args.file.extension().unwrap() == "cpp",
         "Only .cpp files are supported."
     );
     Ok(())

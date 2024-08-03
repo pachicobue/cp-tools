@@ -1,8 +1,8 @@
 use crate::oj_client::{base_client::BaseClient, OjClient, ProblemInfo, SampleInfo};
 use ::{
-    anyhow::{anyhow, bail, Context as _, Result},
-    reqwest::Url,
+    color_eyre::eyre::{ensure, OptionExt, Result},
     scraper::{Element, Html, Selector},
+    url::Url,
 };
 
 const ATCODER_ENDPOINT: &str = "https://atcoder.jp";
@@ -17,63 +17,47 @@ impl OjClient for AtcoderClient {
         let client = BaseClient::new()?;
         Ok(Self { client })
     }
-    async fn login(&self) -> Result<()> {
-        if self.check_login().await? {
+    fn login(&self) -> Result<()> {
+        if self.check_login()? {
             log::debug!("Already logged in.");
             return Ok(());
         }
 
-        log::debug!("Logging in to {}...", ATCODER_ENDPOINT);
+        log::debug!("Login to {}", ATCODER_ENDPOINT);
         let url = Self::endpoint()?;
-        log::trace!("Access to {}", url);
-        let doc = self.get_page(&url).await?;
+        let username = dialoguer::Input::<String>::new()
+            .with_prompt("Username")
+            .interact()?;
+        let password = dialoguer::Password::new()
+            .with_prompt("Password")
+            .interact()?;
+
+        log::debug!("Try get CSRF token.");
+        let doc = self.get_page(&url)?;
         let csrf_token = doc
             .select(&Selector::parse("input[name=\"csrf_token\"]").unwrap())
             .next()
-            .with_context(|| "cannot find csrf_token")?;
-        let csrf_token = csrf_token
+            .ok_or_eyre("Could not find CSRF token")?
             .value()
             .attr("value")
-            .with_context(|| "cannot find csrf_token")?;
+            .ok_or_eyre("Could not find CSRF token")?;
 
-        let username = rprompt::prompt_reply("Username: ")?;
-        let password = rpassword::prompt_password("Password: ")?;
-        log::trace!("Access to {}", &url.join("/login")?);
-        let res = self
-            .client
-            .post(
-                &url.join("/login")?,
-                &[
-                    ("username", &username),
-                    ("password", &password),
-                    ("csrf_token", csrf_token),
-                ],
-            )
-            .await?;
+        log::debug!("Post account info.");
+        self.client.post(
+            &url.join("/login")?,
+            &[
+                ("username", &username),
+                ("password", &password),
+                ("csrf_token", csrf_token),
+            ],
+        )?;
 
-        log::trace!("Parse page content");
-        let res = Html::parse_document(&res);
-        if let Some(err) = res
-            .select(&Selector::parse("div.alert-danger").unwrap())
-            .next()
-        {
-            bail!("Login failed: {}", err.text().collect::<String>());
-        }
-        if res
-            .select(&Selector::parse("div.alert-success").unwrap())
-            .next()
-            .is_some()
-        {
-            return Ok(());
-        }
-
-        Err(anyhow!("Login failed: Unknown error"))
+        log::debug!("Check login status.");
+        ensure!(self.check_login()?, "Login failed");
+        Ok(())
     }
 
-    async fn get_problem_info(&self, url: &Url) -> Result<ProblemInfo> {
-        log::trace!("Access to {}", url);
-        let doc = self.get_page(url).await?;
-
+    fn get_problem_info(&self, url: &Url) -> Result<ProblemInfo> {
         let mut info = ProblemInfo {
             samples: SampleInfo {
                 case_num: 0,
@@ -82,7 +66,7 @@ impl OjClient for AtcoderClient {
             },
         };
 
-        log::debug!("Parsing sample...");
+        let doc = self.get_page(url)?;
         let sels = [
             Selector::parse("span.lang > span.lang-en > div.part > section > h3")
                 .expect("Invalid selector"),
@@ -90,6 +74,7 @@ impl OjClient for AtcoderClient {
                 .expect("Invalid selector"),
         ];
         let target_text = [("Sample Input", "Sample Output"), ("入力例", "出力例")];
+        log::debug!("Target element\n{:?}", target_text);
 
         for (sel, (in_text, out_text)) in sels.iter().zip(target_text.iter()) {
             for header in doc.select(sel) {
@@ -120,13 +105,14 @@ impl AtcoderClient {
         Ok(Url::parse(ATCODER_ENDPOINT)?)
     }
 
-    pub async fn get_page(&self, url: &Url) -> Result<Html> {
-        let doc = self.client.get(url).await?;
+    pub fn get_page(&self, url: &Url) -> Result<Html> {
+        let doc = self.client.get(url)?;
         Ok(Html::parse_document(&doc))
     }
 
-    async fn check_login(&self) -> Result<bool> {
-        let doc = self.get_page(&Self::endpoint()?).await?;
+    fn check_login(&self) -> Result<bool> {
+        log::trace!("Access to {}", &Self::endpoint()?);
+        let doc = self.get_page(&Self::endpoint()?)?;
         Ok(doc
             .select(&Selector::parse("li a[href^=\"/users/\"]").unwrap())
             .next()

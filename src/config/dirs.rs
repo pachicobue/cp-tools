@@ -1,10 +1,26 @@
-use std::{fs, path::PathBuf};
-use ::{color_eyre::eyre::Result, dirs_next};
+use std::{
+    fs::create_dir_all,
+    path::{Path, PathBuf},
+};
 
-pub(crate) fn workspace_dir() -> PathBuf {
-    dirs_next::data_local_dir().unwrap().join("cp_tools")
+use color_eyre::eyre::Result;
+use dirs_next;
+
+use crate::config::metadata::crate_name;
+
+pub(crate) fn tool_workdir() -> PathBuf {
+    dirs_next::data_local_dir().unwrap().join(crate_name())
+}
+
+pub fn project_workdir(dir: &Path) -> Result<PathBuf> {
+    let path = dir.join(".".to_string() + crate_name());
+    if !path.exists() {
+        create_dir_all(&path)?;
+    }
+    Ok(path)
 }
 
 pub(crate) fn init() -> Result<()> {
-    Ok(fs::create_dir_all(workspace_dir())?)
+    create_dir_all(tool_workdir())?;
+    Ok(())
 }

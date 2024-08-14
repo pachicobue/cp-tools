@@ -1,6 +1,11 @@
-use crate::config::compile_opts;
-use std::path::PathBuf;
-use ::{color_eyre::eyre::Result, duct::cmd};
+use std::path::{Path, PathBuf};
+
+use color_eyre::eyre::Result;
+
+use crate::{
+    config::compile_opts,
+    process::{run_single, CmdExpression, CmdIoRedirection},
+};
 
 #[derive(Debug)]
 pub(crate) enum CompileMode {
@@ -11,12 +16,10 @@ pub(crate) enum CompileMode {
 
 #[derive(Debug)]
 pub(crate) struct CompileCommand {
-    pub compiler: String,
-    pub include_dirs: Vec<PathBuf>,
-    pub macros: Vec<String>,
-    pub opts: Vec<String>,
-    pub src: Option<PathBuf>,
-    pub dst: Option<PathBuf>,
+    compiler: String,
+    pub(crate) include_dirs: Vec<PathBuf>,
+    macros: Vec<String>,
+    opts: Vec<String>,
 }
 impl CompileCommand {
     pub fn load_config(mode: CompileMode) -> Result<Self> {
@@ -46,11 +49,10 @@ impl CompileCommand {
                 .collect(),
             macros,
             opts,
-            src: None,
-            dst: None,
         })
     }
-    pub fn exec_compile(&self) -> Result<String> {
+
+    pub fn exec_compilation(&self, src: &Path, dst: Option<&Path>) -> Result<String> {
         let mut args = self.opts.clone();
         for dir in &self.include_dirs {
             args.push("-I".to_string());
@@ -60,14 +62,19 @@ impl CompileCommand {
             args.push("-D".to_string());
             args.push(macro_.to_string());
         }
-        if let Some(dst) = &self.dst {
+        if let Some(dst) = dst {
             args.push("-o".to_string());
             args.push(dst.to_string_lossy().into_owned());
         }
-        if let Some(src) = &self.src {
-            args.push(src.to_string_lossy().into_owned());
-        }
-        log::debug!("$ {} {}", self.compiler, args.join(" "));
-        Ok(cmd(&self.compiler, &args).read()?)
+        args.push(src.to_string_lossy().into_owned());
+
+        let output = run_single(
+            CmdExpression::new(&self.compiler, args),
+            None,
+            CmdIoRedirection::default(),
+        )?
+        .done()?
+        .stdout;
+        Ok(output)
     }
 }

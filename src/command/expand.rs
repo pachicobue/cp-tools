@@ -1,20 +1,16 @@
+pub mod beautify;
+pub mod dummy_headers;
+
+use std::path::{Path, PathBuf};
+
+use clap::{Args, ValueHint};
+use color_eyre::eyre::{ensure, OptionExt, Result};
+
 use crate::{
-    config,
-    utility::{
-        beautify::beautify,
-        compile::{CompileCommand, CompileMode},
-        dummy_headers,
-    },
-};
-use std::{
-    fs,
-    path::{Path, PathBuf},
-};
-use ::{
-    clap::{Args, ValueHint},
-    color_eyre::eyre::{ensure, Result},
-    console::style,
-    regex::Regex,
+    command::expand::beautify::beautify_cpp,
+    compilation::{CompileCommand, CompileMode},
+    config::dirs::project_workdir,
+    styled,
 };
 
 #[derive(Args, Debug)]
@@ -38,30 +34,29 @@ pub(crate) struct ExpandArgs {
 /// ## Note
 /// - 展開処理の結果は`output`で指定されたファイルに出力される
 ///   - `output`が指定されない場合は、`Bundled.cpp`に出力される
-///
 pub(crate) fn expand(args: &ExpandArgs) -> Result<()> {
-    log::info!("{}\n{:?}", style("Expand program").bold().green(), args);
+    log::info!("{}\n{:?}", styled!("Expand program").bold().green(), args);
     check_args(args)?;
 
     let dummy_header_dir = dummy_headers::generate()?;
 
     let dst = match &args.output {
         Some(s) => PathBuf::from(&s),
-        None => default_output(),
+        None => default_output_path(&args.file)?,
     };
     let mut command = CompileCommand::load_config(CompileMode::Expand)?;
-    command.src = Some(args.file.clone());
     command.include_dirs.push(dummy_header_dir);
-    let output = command.exec_compile()?;
+    let output = command.exec_compilation(&args.file, None)?;
 
-    beautify(&output, &dst)?;
+    beautify_cpp(&output, &dst)?;
 
-    log::info!("End expand: {} -> {} .", args.file.display(), dst.display());
+    log::info!(
+        "{}\nInput : {}\nOutput: {}",
+        styled!("Expand completed").bold().green(),
+        args.file.display(),
+        dst.display()
+    );
     Ok(())
-}
-
-fn default_output() -> PathBuf {
-    config::dirs::workspace_dir().join("Bundled.cpp")
 }
 
 fn check_args(args: &ExpandArgs) -> Result<()> {
@@ -71,8 +66,18 @@ fn check_args(args: &ExpandArgs) -> Result<()> {
         args.file.to_string_lossy()
     );
     ensure!(
-        args.file.extension().unwrap() == "cpp",
+        args.file.extension().ok_or_eyre("Failed to get ext.")? == "cpp",
         "Only .cpp files are supported."
     );
     Ok(())
+}
+
+fn default_output_path(filepath: &Path) -> Result<PathBuf> {
+    let basedir = project_workdir(filepath.parent().ok_or_eyre("Failed to get parent.")?)?;
+    let name = filepath
+        .file_stem()
+        .ok_or_eyre("Failed to get stem.")?
+        .to_string_lossy()
+        .to_string();
+    Ok(basedir.join(name + "_bundled.cpp"))
 }

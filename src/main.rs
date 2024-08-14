@@ -1,22 +1,21 @@
-mod config;
-mod utility;
-
 mod command;
-
+mod compilation;
+mod config;
+mod fs;
 mod judge;
-mod oj_client;
+mod printer;
+mod process;
+mod task;
 
-use crate::{
-    command::build::{build, BuildArgs},
-    command::completion::{print_completion, CompletionArgs},
-    command::download::{download, DownloadArgs},
-    command::expand::{expand, ExpandArgs},
-    command::login::{login, LoginArgs},
-};
-use ::{
-    clap::{Parser, Subcommand},
-    clap_verbosity_flag::{InfoLevel, Verbosity},
-    color_eyre::eyre::Result,
+use clap::{Parser, Subcommand};
+use clap_verbosity_flag::{InfoLevel, Verbosity};
+use color_eyre::eyre::Result;
+
+use crate::command::{
+    build::{build, BuildArgs},
+    completion::{print_completion, CompletionArgs},
+    expand::{expand, ExpandArgs},
+    test::{test, TestArgs},
 };
 
 /// コマンドライン引数
@@ -32,14 +31,15 @@ pub(crate) struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
+    #[command(alias = "e")]
     /// ソースコード中の#includeを展開する
     Expand(ExpandArgs),
+    #[command(alias = "b")]
     /// ソースコードをビルドする
     Build(BuildArgs),
-    /// サンプルケースをダウンロードする
-    Download(DownloadArgs),
-    /// オンラインジャッジにログインする
-    Login(LoginArgs),
+    #[command(alias = "t")]
+    /// ソースコードをテストする
+    Test(TestArgs),
     /// シェル補完関数を生成する
     Completion(CompletionArgs),
 }
@@ -55,14 +55,11 @@ fn main() -> Result<()> {
         Commands::Build(args) => {
             build(&args)?;
         }
-        Commands::Download(args) => {
-            download(&args)?;
-        }
-        Commands::Login(args) => {
-            login(&args)?;
-        }
         Commands::Completion(args) => {
             print_completion(args.shell);
+        }
+        Commands::Test(args) => {
+            test(&args)?;
         }
     }
     Ok(())

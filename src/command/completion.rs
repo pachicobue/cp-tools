@@ -1,8 +1,7 @@
+use clap::{Args, CommandFactory};
+use clap_complete::{generate, Shell};
+
 use crate::Cli;
-use ::{
-    clap::{Args, CommandFactory},
-    clap_complete::{generate, Shell},
-};
 
 #[derive(Args, Debug)]
 pub(crate) struct CompletionArgs {

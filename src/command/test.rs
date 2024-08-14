@@ -6,11 +6,14 @@ pub mod special;
 use clap::{Args, Subcommand};
 use color_eyre::eyre::Result;
 
-use crate::command::test::{
-    batch::{batch, BatchArgs},
-    reactive::{reactive, ReactiveArgs},
-    runtwice::{runtwice, RuntwiceArgs},
-    special::{special, SpecialArgs},
+use crate::{
+    command::test::{
+        batch::{batch, BatchArgs},
+        reactive::{reactive, ReactiveArgs},
+        runtwice::{runtwice, RuntwiceArgs},
+        special::{special, SpecialArgs},
+    },
+    judge::Verdict,
 };
 
 #[derive(Args, Debug)]
@@ -36,12 +39,11 @@ enum TestCommands {
     Runtwice(RuntwiceArgs),
 }
 
-pub(crate) fn test(args: &TestArgs) -> Result<()> {
+pub(crate) fn test(args: &TestArgs) -> Result<Vec<Verdict>> {
     match &args.command {
-        TestCommands::Batch(args) => batch(&args)?,
-        TestCommands::Special(args) => special(&args)?,
-        TestCommands::Reactive(args) => reactive(&args)?,
-        TestCommands::Runtwice(args) => runtwice(&args)?,
-    };
-    Ok(())
+        TestCommands::Batch(args) => batch(&args),
+        _ => unreachable!(), // TestCommands::Special(args) => special(&args)?,
+                             // TestCommands::Reactive(args) => reactive(&args)?,
+                             // TestCommands::Runtwice(args) => runtwice(&args)?,
+    }
 }

@@ -4,7 +4,7 @@ use color_eyre::eyre::Result;
 
 use crate::{
     config::compile_opts,
-    process::{run_single, CmdExpression, CmdIoRedirection},
+    process::{run_command_simple, CommandExpression},
 };
 
 #[derive(Debug)]
@@ -68,13 +68,9 @@ impl CompileCommand {
         }
         args.push(src.to_string_lossy().into_owned());
 
-        let output = run_single(
-            CmdExpression::new(&self.compiler, args),
-            None,
-            CmdIoRedirection::default(),
-        )?
-        .done()?
-        .stdout;
+        let output = run_command_simple(CommandExpression::new(&self.compiler, args))?
+            .detail_of_success()?
+            .stdout;
         Ok(output)
     }
 }

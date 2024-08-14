@@ -11,7 +11,7 @@ use regex::Regex;
 
 use crate::{
     config::dirs::tool_workdir,
-    process::{run_single, CmdExpression, CmdIoRedirection},
+    process::{run_command_simple, CommandExpression},
     styled,
 };
 
@@ -35,12 +35,7 @@ pub fn beautify_cpp(output: &str, dst: &Path) -> Result<()> {
         dst.to_string_lossy().into(),
         format!("--style=file:{}", config_file_path.to_string_lossy()).into(),
     ];
-    run_single(
-        CmdExpression::new(&program, &args),
-        None,
-        CmdIoRedirection::default(),
-    )?
-    .done()?;
+    run_command_simple(CommandExpression::new(&program, &args))?.detail_of_success()?;
     Ok(())
 }
 

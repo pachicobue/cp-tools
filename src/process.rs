@@ -1,6 +1,6 @@
 use std::{
     ffi::{OsStr, OsString},
-    path::{Path, PathBuf},
+    process::Stdio,
     time::Duration,
 };
 
@@ -9,133 +9,162 @@ use itertools::Itertools;
 use tempfile;
 use tokio;
 
-use crate::{
-    config::metadata::crate_name,
-    fs::{create_async, open_async, read_async},
-    printer::abbr,
-    styled,
-    task::{run_multi_task, run_single_task, TaskResult},
-};
+use crate::{config::metadata::crate_name, task::run_task};
 
 #[derive(Debug, Clone)]
-pub(crate) struct CmdExpression {
-    pub command: OsString,
-    pub args: Vec<OsString>,
+pub(crate) enum CommandResult {
+    Success(CommandResultDetail),
+    Aborted(CommandResultDetail),
+    Timeout(CommandResultDetail),
 }
-impl CmdExpression {
-    pub(crate) fn new(
-        command: impl AsRef<OsStr>,
-        args: impl IntoIterator<Item = impl AsRef<OsStr>>,
-    ) -> Self {
-        CmdExpression {
-            command: command.as_ref().into(),
-            args: args.into_iter().map(|e| e.as_ref().into()).collect_vec(),
+impl CommandResult {
+    pub(crate) fn detail_of_success(&self) -> Result<CommandResultDetail> {
+        match self {
+            Self::Success(detail) => Ok(detail.clone()),
+            Self::Aborted(_) => Err(eyre!("Aborted")),
+            Self::Timeout(_) => Err(eyre!("Timeout")),
         }
     }
 }
 
-#[derive(Debug, Clone, Default)]
-pub(crate) struct CmdIoRedirection {
-    pub stdin: Option<PathBuf>,
-    pub stdout: Option<PathBuf>,
-    pub stderr: Option<PathBuf>,
+#[derive(Debug, Clone)]
+pub(crate) struct CommandResultDetail {
+    pub stdout: String,
+    pub stderr: String,
+    pub elapsed: Duration,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct CmdOutput {
-    pub stdout: String,
-    pub stderr: String,
+pub(crate) struct CommandExpression {
+    pub program: OsString,
+    pub args: Vec<OsString>,
+}
+impl CommandExpression {
+    pub(crate) fn new<S1, I1, S2>(program: S1, args: I1) -> Self
+    where
+        S1: AsRef<OsStr>,
+        I1: IntoIterator<Item = S2>,
+        S2: AsRef<OsStr>,
+    {
+        CommandExpression {
+            program: program.as_ref().to_os_string(),
+            args: args
+                .into_iter()
+                .map(|e| e.as_ref().to_os_string())
+                .collect_vec(),
+        }
+    }
 }
 
-pub(crate) fn run_single(
-    command: CmdExpression,
-    timeout_sec: Option<f32>,
-    io_redirection: CmdIoRedirection,
-) -> Result<TaskResult<CmdOutput>> {
-    run_multiple(command, timeout_sec, vec![io_redirection]).map(|results| results[0].clone())
+#[derive(Debug)]
+pub(crate) struct CommandIoRedirection {
+    pub stdin: Stdio,
+    pub stdout: Stdio,
+    pub stderr: Stdio,
 }
 
-pub(crate) fn run_multiple(
-    command: CmdExpression,
-    timeout_sec: Option<f32>,
-    io_redirections: Vec<CmdIoRedirection>,
-) -> Result<Vec<TaskResult<CmdOutput>>> {
+pub async fn command_task(
+    expr: CommandExpression,
+    redirect: CommandIoRedirection,
+    timeout: Option<f32>,
+) -> Result<CommandResult> {
+    if let Some(timeout_sec) = timeout {
+        command_timeout(expr, redirect, timeout_sec).await
+    } else {
+        command(expr, redirect).await
+    }
+}
+
+async fn command(expr: CommandExpression, redirect: CommandIoRedirection) -> Result<CommandResult> {
+    let mut command = tokio::process::Command::new(&expr.program);
+
+    let start = tokio::time::Instant::now();
+    let output = command
+        .args(&expr.args)
+        .stdin(redirect.stdin)
+        .stdout(redirect.stdout)
+        .stderr(redirect.stderr)
+        .spawn()
+        .wrap_err("Failed to spawn child process.")?
+        .wait_with_output()
+        .await
+        .wrap_err("Failed to get output from process.")?;
+    let detail = CommandResultDetail {
+        stdout: String::from_utf8_lossy(&output.stdout).into(),
+        stderr: String::from_utf8_lossy(&output.stderr).into(),
+        elapsed: tokio::time::Instant::now() - start,
+    };
+    if output.status.success() {
+        Ok(CommandResult::Success(detail))
+    } else {
+        Ok(CommandResult::Aborted(detail))
+    }
+}
+
+async fn command_timeout(
+    expr: CommandExpression,
+    redirect: CommandIoRedirection,
+    timeout_sec: f32,
+) -> Result<CommandResult> {
+    let tl = Duration::from_secs_f32(timeout_sec);
+    match tokio::time::timeout(tl * 2, command(expr, redirect)).await {
+        Ok(wrapped_result) => match wrapped_result? {
+            CommandResult::Success(detail) => {
+                if detail.elapsed <= tl {
+                    Ok(CommandResult::Success(detail))
+                } else {
+                    Ok(CommandResult::Timeout(detail))
+                }
+            }
+            CommandResult::Aborted(detail) => Ok(CommandResult::Aborted(detail)),
+            _ => unreachable!(),
+        },
+        Err(_) => Ok(CommandResult::Timeout(CommandResultDetail {
+            stdout: "".into(),
+            stderr: "".into(),
+            elapsed: tl * 2,
+        })),
+    }
+}
+
+pub(crate) fn run_command_simple(expr: CommandExpression) -> Result<CommandResult> {
     log::info!(
         "$ {} {}",
-        &command.command.to_string_lossy(),
-        &command.args.iter().map(|e| e.to_string_lossy()).join(" "),
+        &expr.program.to_string_lossy(),
+        &expr.args.iter().map(|arg| arg.to_string_lossy()).join(" ")
     );
-    for (i, red) in io_redirections.iter().enumerate() {
-        log::debug!(
-            "[{}] stdin: `{:?}`, stdout: `{:?}`, stderr: `{:?}`",
-            i,
-            red.stdin,
-            red.stdout,
-            red.stderr
-        );
-    }
-
     let tempdir = tempfile::Builder::new()
         .prefix(&format!("{}-", crate_name()))
         .tempdir()
-        .context("Failed to create tempdir.")?;
-    let temppath = tempdir.path();
-    let tasks = io_redirections
-        .into_iter()
-        .enumerate()
-        .map(|(i, red)| {
-            let stdin = red.stdin.clone().unwrap_or(default_stdin());
-            let stdout = red.stdout.clone().unwrap_or(default_stdout(&temppath, i));
-            let stderr = red.stderr.clone().unwrap_or(default_stderr(&temppath, i));
-            exec(command.clone(), stdin, stdout, stderr)
-        })
-        .collect_vec();
-    let results = run_multi_task(tasks, timeout_sec);
-    tempdir.close().context("Failed to close tempdir.")?;
-    results
+        .wrap_err("Failed to create tempdir.")?;
+    let result = run_task(command(
+        expr,
+        CommandIoRedirection {
+            stdin: Stdio::piped(),
+            stdout: Stdio::piped(),
+            stderr: Stdio::piped(),
+        },
+    ))?;
+    tempdir.close().wrap_err("Failed to delete tempdir.")?;
+    describe_result(&result);
+    Ok(result)
 }
 
-async fn exec(
-    cmd: CmdExpression,
-    stdin: PathBuf,
-    stdout: PathBuf,
-    stderr: PathBuf,
-) -> Result<TaskResult<CmdOutput>> {
-    let stdin_file = open_async(&stdin).await?.into_std().await;
-    let stdout_file = create_async(&stdout).await?.into_std().await;
-    let stderr_file = create_async(&stderr).await?.into_std().await;
-    let output = tokio::process::Command::new(&cmd.command)
-        .args(&cmd.args)
-        .stdin(stdin_file)
-        .stdout(stdout_file)
-        .stderr(stderr_file)
-        .kill_on_drop(true)
-        .spawn()
-        .context("Failed to spawn child process.")?
-        .wait_with_output()
-        .await
-        .context("Failed to get output from child process.")?;
-    let cmd_output = CmdOutput {
-        stdout: read_async(stdout).await?,
-        stderr: read_async(stderr).await?,
-    };
-    if output.status.success() {
-        Ok(TaskResult::Done(cmd_output))
-    } else {
-        Ok(TaskResult::RuntimeError(cmd_output))
+fn describe_result(result: &CommandResult) {
+    match result {
+        CommandResult::Success(detail) => {
+            log::info!(
+                "Command successfully done: {}ms elapsed.",
+                detail.elapsed.as_millis()
+            );
+            log::trace!("{}", detail.stdout);
+        }
+        CommandResult::Aborted(detail) => {
+            log::error!("Command aborted: {}ms elapsed.", detail.elapsed.as_millis());
+            log::error!("{}", detail.stderr)
+        }
+        CommandResult::Timeout(detail) => {
+            log::error!("Command timeout: {}ms elapsed.", detail.elapsed.as_millis())
+        }
     }
-}
-
-fn default_stdin() -> PathBuf {
-    Path::new("/dev/null").to_path_buf()
-}
-fn default_stdout(basedir: &Path, index: usize) -> PathBuf {
-    basedir.join(&format!("stdout-{}", index))
-}
-fn default_stderr(basedir: &Path, index: usize) -> PathBuf {
-    basedir.join(&format!("stderr-{}", index))
-}
-
-const fn default_timeout_sec() -> f32 {
-    30.
 }

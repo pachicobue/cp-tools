@@ -10,7 +10,7 @@ pub(crate) fn read(filepath: impl AsRef<Path>) -> Result<String> {
         filepath.as_ref().display()
     );
     let content = std::fs::read_to_string(filepath.as_ref())
-        .context(format!("Failed to read `{}`.", filepath.as_ref().display()))?;
+        .wrap_err(format!("Failed to read `{}`.", filepath.as_ref().display()))?;
     Ok(content)
 }
 
@@ -24,12 +24,12 @@ pub(crate) fn write(
             "Failed to get parent of `{}`.",
             filepath.as_ref().display()
         ))?;
-        std::fs::create_dir_all(dir).context(format!(
+        std::fs::create_dir_all(dir).wrap_err(format!(
             "Failed to create directory `{}` recursively.",
             dir.display()
         ))?;
     }
-    std::fs::write(filepath.as_ref(), &content).context(format!(
+    std::fs::write(filepath.as_ref(), &content).wrap_err(format!(
         "Failed to write `{}`.",
         filepath.as_ref().display()
     ))?;
@@ -37,14 +37,14 @@ pub(crate) fn write(
 }
 
 pub(crate) fn open(filepath: impl AsRef<Path>) -> Result<std::fs::File> {
-    std::fs::File::open(filepath.as_ref()).context(format!(
+    std::fs::File::open(filepath.as_ref()).wrap_err(format!(
         "Failed to open file `{}`.",
         filepath.as_ref().display()
     ))
 }
 
 pub(crate) fn create(filepath: impl AsRef<Path>) -> Result<std::fs::File> {
-    std::fs::File::create(filepath.as_ref()).context(format!(
+    std::fs::File::create(filepath.as_ref()).wrap_err(format!(
         "Failed to create file `{}`.",
         filepath.as_ref().display()
     ))
@@ -58,7 +58,7 @@ pub(crate) async fn read_async(filepath: impl AsRef<Path>) -> Result<String> {
     );
     let content = tokio::fs::read_to_string(filepath.as_ref())
         .await
-        .context(format!("Failed to read `{}`.", filepath.as_ref().display()))?;
+        .wrap_err(format!("Failed to read `{}`.", filepath.as_ref().display()))?;
     Ok(content)
 }
 
@@ -74,11 +74,11 @@ pub(crate) async fn write_async(
         ))?;
         tokio::fs::create_dir_all(dir)
             .await
-            .context(format!("Failed to create `{}` recursively.", dir.display()))?;
+            .wrap_err(format!("Failed to create `{}` recursively.", dir.display()))?;
     }
     tokio::fs::write(filepath.as_ref(), &content)
         .await
-        .context(format!(
+        .wrap_err(format!(
             "Failed to write `{}`.",
             filepath.as_ref().display()
         ))?;
@@ -88,7 +88,7 @@ pub(crate) async fn write_async(
 pub(crate) async fn create_async(filepath: impl AsRef<Path>) -> Result<tokio::fs::File> {
     tokio::fs::File::create(filepath.as_ref())
         .await
-        .context(format!(
+        .wrap_err(format!(
             "Failed to create file `{}`.",
             filepath.as_ref().display()
         ))
@@ -97,7 +97,7 @@ pub(crate) async fn create_async(filepath: impl AsRef<Path>) -> Result<tokio::fs
 pub(crate) async fn open_async(filepath: impl AsRef<Path>) -> Result<tokio::fs::File> {
     tokio::fs::File::open(filepath.as_ref())
         .await
-        .context(format!(
+        .wrap_err(format!(
             "Failed to open file `{}`.",
             filepath.as_ref().display()
         ))

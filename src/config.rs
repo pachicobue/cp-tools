@@ -2,7 +2,6 @@ pub mod compile_opts;
 pub mod dirs;
 pub mod logger;
 pub mod metadata;
-pub mod testcase;
 use color_eyre::eyre::Result;
 use log::LevelFilter;
 

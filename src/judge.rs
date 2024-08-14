@@ -1,12 +1,15 @@
 use std::{
-    ffi::OsString,
+    fmt,
     path::{Path, PathBuf},
 };
 
-use color_eyre::eyre::Result;
-use itertools::Itertools;
+use color_eyre::eyre::{OptionExt, Result};
+use walkdir::WalkDir;
 
-use crate::process::{run_multiple, CmdExpression, CmdIoRedirection};
+use crate::config::dirs::project_workdir;
+
+const INPUT_EXT: &str = "in";
+const OUTPUT_EXT: &str = "out";
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum Verdict {
@@ -14,14 +17,61 @@ pub(crate) enum Verdict {
     Wa,
     Re,
     Tle,
+    Ce,
     Ie,
-
-    Wj,
+}
+impl fmt::Display for Verdict {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let str = match self {
+            Verdict::Ac => "AC",
+            Verdict::Wa => "WA",
+            Verdict::Re => "RE",
+            Verdict::Tle => "TLE",
+            Verdict::Ce => "CE",
+            Verdict::Ie => "IE",
+        };
+        str.fmt(f)
+    }
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Testcase {
-    pub(crate) input: PathBuf,
+pub(crate) struct JudgePaths {
+    pub(crate) input: [PathBuf; 2],
     pub(crate) expect: Option<PathBuf>,
-    pub(crate) actual: Option<PathBuf>,
+
+    pub(crate) actual: [PathBuf; 2],
+}
+
+pub(crate) fn default_casedir(file: &Path) -> Result<PathBuf> {
+    let basedir = project_workdir(file.parent().ok_or_eyre("Failed to get parent")?)?;
+    let name = file
+        .file_stem()
+        .ok_or_eyre("Failed to get stem.")?
+        .to_string_lossy()
+        .to_string();
+    Ok(basedir.join(name + "_cases"))
+}
+pub(crate) fn collect_judge_paths(dir: &Path, tempdir: &Path) -> Vec<JudgePaths> {
+    let mut cases: Vec<JudgePaths> = Vec::new();
+    for entry in WalkDir::new(dir).max_depth(1).into_iter().filter(|entry| {
+        entry
+            .as_ref()
+            .is_ok_and(|entry| entry.path().extension().unwrap_or_default() == INPUT_EXT)
+    }) {
+        let input = entry.unwrap().path().to_path_buf();
+        let output = input.clone().with_extension(OUTPUT_EXT);
+        let testname = input.file_stem().unwrap();
+        cases.push(JudgePaths {
+            input: [
+                input.clone(),
+                tempdir.join(&format!("{}_second.in", testname.to_string_lossy())),
+            ],
+            expect: if output.exists() { Some(output) } else { None },
+            actual: [
+                tempdir.join(&format!("{}_first.actual", testname.to_string_lossy())),
+                tempdir.join(&format!("{}_second.actual", testname.to_string_lossy())),
+            ],
+        });
+    }
+    cases
 }

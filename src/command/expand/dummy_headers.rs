@@ -8,7 +8,7 @@ use walkdir::WalkDir;
 use crate::{
     config::dirs::tool_workdir,
     fs::write,
-    process::{run_single, CmdExpression, CmdIoRedirection},
+    process::{run_command_simple, CommandExpression},
 };
 
 pub(crate) fn generate() -> Result<PathBuf> {
@@ -21,13 +21,9 @@ pub(crate) fn generate() -> Result<PathBuf> {
 }
 
 fn get_gcc_version() -> Result<String> {
-    let output = run_single(
-        CmdExpression::new("gcc", ["--version"]),
-        None,
-        CmdIoRedirection::default(),
-    )?
-    .done()?
-    .stdout;
+    let output = run_command_simple(CommandExpression::new("gcc", ["--version"]))?
+        .detail_of_success()?
+        .stdout;
     let re = Regex::new(r"(\d+\.\d+\.\d+)").unwrap();
     Ok(re
         .captures(&output)

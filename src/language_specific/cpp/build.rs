@@ -3,10 +3,8 @@ use std::path::{Path, PathBuf};
 use clap::{Args, ValueHint};
 use color_eyre::eyre::{ensure, OptionExt, Result};
 
-use crate::{
-    compilation::{CompileCommand, CompileMode},
-    styled,
-};
+use super::compilation::{CompileCommand, CompileMode};
+use crate::styled;
 
 #[derive(Args, Debug)]
 pub(crate) struct BuildArgs {

@@ -7,8 +7,10 @@ use walkdir::WalkDir;
 
 use crate::{
     config::dirs::tool_workdir,
-    fs::write,
-    process::{run_command_simple, CommandExpression},
+    core::{
+        fs::write,
+        process::{run_command_simple, CommandExpression},
+    },
 };
 
 pub(crate) fn generate() -> Result<PathBuf> {

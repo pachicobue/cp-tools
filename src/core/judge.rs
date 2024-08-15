@@ -3,10 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use color_eyre::eyre::{OptionExt, Result};
 use walkdir::WalkDir;
-
-use crate::config::dirs::project_workdir;
 
 const INPUT_EXT: &str = "in";
 const OUTPUT_EXT: &str = "out";
@@ -42,15 +39,6 @@ pub(crate) struct JudgePaths {
     pub(crate) actual: [PathBuf; 2],
 }
 
-pub(crate) fn default_casedir(file: &Path) -> Result<PathBuf> {
-    let basedir = project_workdir(file.parent().ok_or_eyre("Failed to get parent")?)?;
-    let name = file
-        .file_stem()
-        .ok_or_eyre("Failed to get stem.")?
-        .to_string_lossy()
-        .to_string();
-    Ok(basedir.join(name + "_cases"))
-}
 pub(crate) fn collect_judge_paths(dir: &Path, tempdir: &Path) -> Vec<JudgePaths> {
     let mut cases: Vec<JudgePaths> = Vec::new();
     for entry in WalkDir::new(dir).max_depth(1).into_iter().filter(|entry| {

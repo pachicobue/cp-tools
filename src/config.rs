@@ -1,4 +1,3 @@
-pub mod compile_opts;
 pub mod dirs;
 pub mod logger;
 pub mod metadata;

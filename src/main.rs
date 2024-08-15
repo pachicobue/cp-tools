@@ -1,21 +1,20 @@
-mod command;
-mod compilation;
 mod config;
-mod fs;
-mod judge;
-mod printer;
-mod process;
-mod task;
+mod core;
+mod language_specific;
 
 use clap::{Parser, Subcommand};
 use clap_verbosity_flag::{InfoLevel, Verbosity};
 use color_eyre::eyre::Result;
 
-use crate::command::{
-    build::{build, BuildArgs},
-    completion::{print_completion, CompletionArgs},
-    expand::{expand, ExpandArgs},
-    test::{test, TestArgs},
+use crate::{
+    core::command::{
+        completion::{print_completion, CompletionArgs},
+        test::{test, TestArgs},
+    },
+    language_specific::cpp::{
+        build::{build, BuildArgs},
+        expand::{expand, ExpandArgs},
+    },
 };
 
 /// コマンドライン引数

@@ -1,0 +1,42 @@
+---
+BasedOnStyle: LLVM
+AccessModifierOffset: -4
+AlignArrayOfStructures: Right
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowShortCompoundRequirementOnASingleLine: false
+AllowShortEnumsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
+AllowShortLambdasOnASingleLine: None
+AlwaysBreakTemplateDeclarations: No
+AttributeMacros:
+  - UNUSED
+BinPackArguments: false
+BinPackParameters: false
+BreakArrays: false
+ColumnLimit: 0
+EmptyLineBeforeAccessModifier: Never
+ForEachMacros:
+  - LOOP
+IncludeCategories:
+  - Regex: ^".*"
+    Priority: 1
+    SortPriority: 1
+    CaseSensitive: false
+  - Priority: 0
+    CaseSensitive: false
+    SortPriority: 0
+    Regex: ^<.*>
+  - Regex: .*
+    Priority: 1
+    SortPriority: 0
+    CaseSensitive: false
+IndentWidth: 4
+IndentWrappedFunctionNames: true
+InsertBraces: true
+InsertNewlineAtEOF: true
+PointerAlignment: Left
+RequiresClausePosition: SingleLine
+TabWidth: 4
+WhitespaceSensitiveMacros:
+  - BOOST_PP_STRINGIZE

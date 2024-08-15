@@ -9,7 +9,7 @@ use itertools::Itertools;
 use tempfile;
 use tokio;
 
-use crate::{config::metadata::crate_name, task::run_task};
+use crate::{core::task::run_task, tempfile_builder};
 
 #[derive(Debug, Clone)]
 pub(crate) enum CommandResult {
@@ -133,10 +133,7 @@ pub(crate) fn run_command_simple(expr: CommandExpression) -> Result<CommandResul
         &expr.program.to_string_lossy(),
         &expr.args.iter().map(|arg| arg.to_string_lossy()).join(" ")
     );
-    let tempdir = tempfile::Builder::new()
-        .prefix(&format!("{}-", crate_name()))
-        .tempdir()
-        .wrap_err("Failed to create tempdir.")?;
+    let tempdir = tempfile_builder!();
     let result = run_task(command(
         expr,
         CommandIoRedirection {

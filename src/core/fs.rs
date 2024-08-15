@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use color_eyre::eyre::{ensure, Context, OptionExt, Result};
+use color_eyre::eyre::{ensure, Context, ContextCompat, OptionExt, Result};
 use tokio;
 
 pub(crate) fn read(filepath: impl AsRef<Path>) -> Result<String> {
@@ -101,4 +101,26 @@ pub(crate) async fn open_async(filepath: impl AsRef<Path>) -> Result<tokio::fs::
             "Failed to open file `{}`.",
             filepath.as_ref().display()
         ))
+}
+
+#[macro_export]
+macro_rules! tempfile_builder {
+    () => {
+        tempfile::Builder::new()
+            .prefix(&format!("{}-", $crate::config::metadata::CRATE_NAME))
+            .tempdir()
+            .wrap_err("Failed to create tempdir.")?
+    };
+}
+
+pub(crate) fn filename(filepath: impl AsRef<Path>) -> Result<String> {
+    Ok(filepath
+        .as_ref()
+        .file_stem()
+        .wrap_err(format!(
+            "Failed to get filestem from `{}`",
+            filepath.as_ref().display(),
+        ))?
+        .to_string_lossy()
+        .to_string())
 }

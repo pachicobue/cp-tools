@@ -6,12 +6,9 @@ use std::path::{Path, PathBuf};
 use clap::{Args, ValueHint};
 use color_eyre::eyre::{ensure, OptionExt, Result};
 
-use crate::{
-    command::expand::beautify::beautify_cpp,
-    compilation::{CompileCommand, CompileMode},
-    config::dirs::project_workdir,
-    styled,
-};
+use self::beautify::beautify_cpp;
+use super::compilation::{CompileCommand, CompileMode};
+use crate::{config::dirs::project_workdir, core::fs::filename, styled};
 
 #[derive(Args, Debug)]
 pub(crate) struct ExpandArgs {
@@ -74,10 +71,5 @@ fn check_args(args: &ExpandArgs) -> Result<()> {
 
 fn default_output_path(filepath: &Path) -> Result<PathBuf> {
     let basedir = project_workdir(filepath.parent().ok_or_eyre("Failed to get parent.")?)?;
-    let name = filepath
-        .file_stem()
-        .ok_or_eyre("Failed to get stem.")?
-        .to_string_lossy()
-        .to_string();
-    Ok(basedir.join(name + "_bundled.cpp"))
+    Ok(basedir.join(filename(filepath)? + "_bundled.cpp"))
 }

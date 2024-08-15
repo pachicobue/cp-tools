@@ -1,5 +1,3 @@
 use std::env;
 
-pub(crate) const fn crate_name() -> &'static str {
-    env!("CARGO_PKG_NAME")
-}
+pub(crate) const CRATE_NAME: &str = env!("CARGO_PKG_NAME");

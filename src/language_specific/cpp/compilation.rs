@@ -2,10 +2,8 @@ use std::path::{Path, PathBuf};
 
 use color_eyre::eyre::Result;
 
-use crate::{
-    config::compile_opts,
-    process::{run_command_simple, CommandExpression},
-};
+use super::compile_opts;
+use crate::core::process::{run_command_simple, CommandExpression};
 
 #[derive(Debug)]
 pub(crate) enum CompileMode {

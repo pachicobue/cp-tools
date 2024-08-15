@@ -11,7 +11,7 @@ use regex::Regex;
 
 use crate::{
     config::dirs::tool_workdir,
-    process::{run_command_simple, CommandExpression},
+    core::process::{run_command_simple, CommandExpression},
     styled,
 };
 
@@ -51,7 +51,7 @@ fn format_config_path() -> Result<PathBuf> {
                 .yellow()
             );
         Term::stdout().read_char()?;
-        let content = include_str!("../../../data/.clang-format");
+        let content = include_str!("../../../../resources/cpp/.clang-format");
         fs::write(&path, &content)?;
     }
     Ok(path)

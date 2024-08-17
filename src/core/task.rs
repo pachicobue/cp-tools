@@ -10,7 +10,7 @@ pub(crate) fn run_task<
     task: F,
 ) -> Result<T> {
     let results = run_tasks(vec![task])?;
-    Ok(results.get(0).unwrap().clone())
+    Ok(results.first().unwrap().clone())
 }
 
 pub(crate) fn run_tasks<
@@ -27,7 +27,7 @@ pub(crate) fn run_tasks<
         .block_on(runtime.spawn(async move {
             let handles = tasks
                 .into_iter()
-                .map(|task| tokio::task::spawn(async move { task.await }));
+                .map(|task| tokio::task::spawn(task));
             let mut results = vec![];
             for handle in handles {
                 results.push(handle.await.wrap_err("Failed to join.")??)

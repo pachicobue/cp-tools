@@ -1,59 +1,59 @@
 use std::{ffi::OsString, path::PathBuf, process::Stdio};
 
 use clap::{Args, ValueHint};
-use color_eyre::eyre::{ensure, Context, Result};
+use color_eyre::eyre::{ensure, Result};
 use itertools::Itertools;
-use tempfile;
 
 use crate::{
     core::{
-        fs::read_async,
+        fs::{read_async, with_tempdir},
         judge::{collect_judge_paths, JudgePaths, Verdict},
         process::{command_task, CommandExpression, CommandIoRedirection, CommandResult},
         task::run_tasks,
     },
-    styled, tempfile_builder,
+    styled,
 };
 
 #[derive(Args, Debug)]
-pub(crate) struct BatchArgs {
+pub(crate) struct TestArgs {
     /// 実行コマンド
     #[arg(short = 'c')]
     command: String,
 
     /// テストディレクトリ
-    #[arg(short = 'd', alias = "dir", value_hint(ValueHint::FilePath))]
+    #[arg(short = 'd', visible_alias = "dir", value_hint(ValueHint::FilePath))]
     directory: PathBuf,
 
     /// TL(秒単位)
-    #[arg(short = 't')]
+    #[arg(short = 't', visible_alias = "tl")]
     timelimit: Option<f32>,
 }
 
-pub(crate) fn batch(args: &BatchArgs) -> Result<Vec<Verdict>> {
+pub(crate) fn test(args: &TestArgs) -> Result<Vec<Verdict>> {
     log::info!("{}\n{:?}", styled!("Batch Test").bold().green(), args);
     check_args(args)?;
 
-    let tempdir = tempfile_builder!();
-    let temppath = tempdir.path();
+    let verdicts = with_tempdir(|tempdir| -> Result<Vec<Verdict>> {
+        let temppath = tempdir.path();
 
-    let judge_paths = collect_judge_paths(&args.directory, temppath);
-    log::debug!("judge_paths: {:#?}", &judge_paths);
-    if judge_paths.is_empty() {
-        log::error!("No testcase found!");
-    }
-    let check_tasks = judge_paths
-        .into_iter()
-        .map(|judge_path| judge_single(args.command.clone(), judge_path, args.timelimit))
-        .collect_vec();
-    let verdicts = run_tasks(check_tasks)?;
-    tempdir.close().wrap_err("Failed to close tempdir.")?;
+        let judge_paths = collect_judge_paths(&args.directory, temppath);
+        log::debug!("judge_paths: {:#?}", &judge_paths);
+        if judge_paths.is_empty() {
+            log::error!("No testcase found!");
+        }
+        let check_tasks = judge_paths
+            .into_iter()
+            .map(|judge_path| judge_single(args.command.clone(), judge_path, args.timelimit))
+            .collect_vec();
+        let verdicts = run_tasks(check_tasks)?;
+        Ok(verdicts)
+    })??;
     Ok(verdicts)
 }
 
 async fn judge_single(command: String, judge_path: JudgePaths, tl: Option<f32>) -> Result<Verdict> {
     let sol_result = command_task(
-        CommandExpression::new(command, &Vec::<OsString>::new()),
+        CommandExpression::new(command, Vec::<OsString>::new()),
         CommandIoRedirection {
             stdin: Stdio::piped(),
             stdout: Stdio::piped(),
@@ -81,7 +81,7 @@ async fn judge_single(command: String, judge_path: JudgePaths, tl: Option<f32>) 
     }
 }
 
-fn check_args(args: &BatchArgs) -> Result<()> {
+fn check_args(args: &TestArgs) -> Result<()> {
     ensure!(
         &args.directory.exists(),
         "`{}` not found.",

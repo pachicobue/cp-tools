@@ -1,0 +1,55 @@
+#--------------------------------------------------------------------------------
+# 言語毎の コンパイル/実行 方法定義
+# （*付きフィールドは必須。外部スクリプトをcommand指定する場合は絶対パスにすること）
+#
+# - *name
+#   言語名（`enum Language` のフィールド名に対応）
+# - *extensions
+#   拡張子候補（`guess_language` に使用）
+# - [build]
+#   ビルド時コマンド定義（*付きサブフィールドがビルドに必須）
+#   - *bin_path
+#     生成される実行ファイルパス（executeコマンドで ${path} に渡される）
+#   - *command
+#   - debug_opts
+#     - Debugビルドコマンド　： $ <command> <debug_opts>
+#   - release_opts
+#     - Releaseビルドコマンド： $ <command> <release_opts>
+# - [execute] 
+#   実行時コマンド定義（*付きサブフィールドが実行に必須）
+#   ${path} には [build.bin_path] が渡される
+#   - *command
+# - [expand]
+#   ファイル展開用コマンド定義（*付きサブフィールドが展開に必須）
+#   - *command
+#
+#--------------------------------------------------------------------------------
+# 使用可能な変数名
+#
+# - ${path}: ファイルパス(ソースファイル or 実行ファイル)
+#   `/home/sho/programming/main.cpp`
+#   `/home/sho/programming/main.exe`
+# - ${dir}: ディレクトリ
+#   `/home/sho/programming/`
+# - ${name}: ファイル名
+#   `main.cpp`
+#   `main.exe`
+# - ${basename}: ${name} から拡張子を除いた部分
+#   `main`
+#--------------------------------------------------------------------------------
+[[languages]]
+name = "cpp"
+extensions = ['cpp', 'cc']
+[build]
+bin_path = "${dir}/${name}.exe"
+command = "clang++ -I/home/sho/ghq/github.com/pachicobue/algolib/src -I/home/sho/ghq/github.com/atcoder/ac-library -DHOGEPACHI -std=gnu++20 -Wall -Wextra ${path} -o ${dir}/${basename}.exe"
+debug_flag = "-g3 -O0 -fsanitize=undefined,address"
+release_flag = "-O2"
+[execute]
+command = "${path}"
+[expand]
+command = """
+clang++ -E -I/home/sho/ghq/github.com/pachicobue/algolib/src -I/home/sho/ghq/github.com/atcoder/ac-library -D HOGEPACHI ${path} 
+ | awk '/# [1-9][0-9]* \".*\"( [1-2])* 3/{skip=1} /# [1-9][0-9]* \".*\"( 1)? 2[^3]*$/{skip=0} (skip==0){print}'
+ | clang-format 
+"""

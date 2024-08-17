@@ -27,10 +27,7 @@ impl CompileCommand {
             CompileMode::Debug => opts.extend(loaded_opts.debug_opts.clone()),
             CompileMode::Release => opts.extend(loaded_opts.release_opts.clone()),
             CompileMode::Expand => {
-                opts = ["-E", "-P", "-nostdinc++", "-nostdinc"]
-                    .iter()
-                    .map(|s| s.to_string())
-                    .collect();
+                opts = ["-E"].iter().map(|s| s.to_string()).collect();
             }
         }
         let macros = match mode {

@@ -1,9 +1,12 @@
 use std::path::Path;
 
 use color_eyre::eyre::{ensure, Context, ContextCompat, OptionExt, Result};
+use tempfile::{self, TempDir};
 use tokio;
 
-pub(crate) fn read(filepath: impl AsRef<Path>) -> Result<String> {
+use crate::config::metadata::CRATE_NAME;
+
+pub(crate) fn read_sync(filepath: impl AsRef<Path>) -> Result<String> {
     ensure!(
         filepath.as_ref().exists(),
         "`{}` does not exist.",
@@ -14,7 +17,7 @@ pub(crate) fn read(filepath: impl AsRef<Path>) -> Result<String> {
     Ok(content)
 }
 
-pub(crate) fn write(
+pub(crate) fn write_sync(
     filepath: impl AsRef<Path>,
     content: impl AsRef<[u8]>,
     ensure_exist: bool,
@@ -36,14 +39,14 @@ pub(crate) fn write(
     Ok(())
 }
 
-pub(crate) fn open(filepath: impl AsRef<Path>) -> Result<std::fs::File> {
+pub(crate) fn open_sync(filepath: impl AsRef<Path>) -> Result<std::fs::File> {
     std::fs::File::open(filepath.as_ref()).wrap_err(format!(
         "Failed to open file `{}`.",
         filepath.as_ref().display()
     ))
 }
 
-pub(crate) fn create(filepath: impl AsRef<Path>) -> Result<std::fs::File> {
+pub(crate) fn create_sync(filepath: impl AsRef<Path>) -> Result<std::fs::File> {
     std::fs::File::create(filepath.as_ref()).wrap_err(format!(
         "Failed to create file `{}`.",
         filepath.as_ref().display()
@@ -103,16 +106,6 @@ pub(crate) async fn open_async(filepath: impl AsRef<Path>) -> Result<tokio::fs::
         ))
 }
 
-#[macro_export]
-macro_rules! tempfile_builder {
-    () => {
-        tempfile::Builder::new()
-            .prefix(&format!("{}-", $crate::config::metadata::CRATE_NAME))
-            .tempdir()
-            .wrap_err("Failed to create tempdir.")?
-    };
-}
-
 pub(crate) fn filename(filepath: impl AsRef<Path>) -> Result<String> {
     Ok(filepath
         .as_ref()
@@ -123,4 +116,17 @@ pub(crate) fn filename(filepath: impl AsRef<Path>) -> Result<String> {
         ))?
         .to_string_lossy()
         .to_string())
+}
+
+pub(crate) fn with_tempdir<F, R>(func: F) -> Result<R>
+where
+    F: FnOnce(&TempDir) -> R,
+{
+    let tempdir = tempfile::Builder::new()
+        .prefix(&format!("{}-", CRATE_NAME))
+        .tempdir()
+        .wrap_err("Failed to build tempdir.")?;
+    let result = func(&tempdir);
+    tempdir.close().wrap_err("Failed to close tempdir.")?;
+    Ok(result)
 }

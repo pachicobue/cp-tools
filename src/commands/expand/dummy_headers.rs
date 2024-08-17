@@ -8,7 +8,7 @@ use walkdir::WalkDir;
 use crate::{
     config::dirs::tool_workdir,
     core::{
-        fs::write,
+        fs::write_sync,
         process::{run_command_simple, CommandExpression},
     },
 };
@@ -46,6 +46,7 @@ fn generate_dummy_headers(dst_dir: &Path, src_dir: &Path) -> Result<()> {
     );
 
     let file_paths = gather_files(src_dir);
+    log::trace!("{:#?}", &file_paths);
     for path in file_paths {
         let relative = path.strip_prefix(src_dir).context(format!(
             "Failed to strip `{}` from `{}`.",
@@ -55,7 +56,7 @@ fn generate_dummy_headers(dst_dir: &Path, src_dir: &Path) -> Result<()> {
         let dst_path = dst_dir.join(relative);
         if !dst_path.exists() {
             log::trace!("create `{}`", dst_path.display());
-            write(
+            write_sync(
                 &dst_path,
                 format!("#pragma once\n#pragma INCLUDE<{}>\n", relative.display()),
                 true,
@@ -69,7 +70,7 @@ fn generate_dummy_headers(dst_dir: &Path, src_dir: &Path) -> Result<()> {
 fn gather_files(src_dir: &Path) -> Vec<PathBuf> {
     WalkDir::new(src_dir)
         .into_iter()
-        .filter(|entry| entry.is_ok())
+        .filter(|entry| entry.as_ref().is_ok_and(|entry| entry.path().is_file()))
         .map(|entry| entry.unwrap().into_path().to_path_buf())
         .collect_vec()
 }

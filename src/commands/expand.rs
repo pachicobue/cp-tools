@@ -6,9 +6,13 @@ use std::path::{Path, PathBuf};
 use clap::{Args, ValueHint};
 use color_eyre::eyre::{ensure, OptionExt, Result};
 
-use self::beautify::beautify_cpp;
-use super::compilation::{CompileCommand, CompileMode};
-use crate::{config::dirs::project_workdir, core::fs::filename, styled};
+use self::beautify::beautify;
+use crate::{
+    commands::compilation::{CompileCommand, CompileMode},
+    config::dirs::project_workdir,
+    core::fs::{filename, write_sync},
+    styled,
+};
 
 #[derive(Args, Debug)]
 pub(crate) struct ExpandArgs {
@@ -42,10 +46,11 @@ pub(crate) fn expand(args: &ExpandArgs) -> Result<()> {
         None => default_output_path(&args.file)?,
     };
     let mut command = CompileCommand::load_config(CompileMode::Expand)?;
-    command.include_dirs.push(dummy_header_dir);
+    // command.include_dirs.push(dummy_header_dir);
     let output = command.exec_compilation(&args.file, None)?;
 
-    beautify_cpp(&output, &dst)?;
+    // write_sync(&dst, beautify(&output)?, true)?;
+    write_sync(&dst, &output, true)?;
 
     log::info!(
         "{}\nInput : {}\nOutput: {}",

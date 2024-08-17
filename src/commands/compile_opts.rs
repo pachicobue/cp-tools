@@ -40,8 +40,8 @@ fn config_path() -> Result<PathBuf> {
                 .yellow()
             );
         Term::stdout().read_char()?;
-        let content = include_str!("../../../resources/cpp/compile_commands.json");
-        fs::write(&path, &content)?;
+        let content = include_str!("../../resources/cpp/compile_commands.json");
+        fs::write(&path, content)?;
     }
     Ok(path)
 }

@@ -6,10 +6,9 @@ use std::{
 
 use color_eyre::eyre::{eyre, Context, Result};
 use itertools::Itertools;
-use tempfile;
 use tokio;
 
-use crate::{core::task::run_task, tempfile_builder};
+use crate::core::{printer::abbr, task::run_task};
 
 #[derive(Debug, Clone)]
 pub(crate) enum CommandResult {
@@ -53,6 +52,14 @@ impl CommandExpression {
                 .map(|e| e.as_ref().to_os_string())
                 .collect_vec(),
         }
+    }
+
+    pub(crate) fn to_string(&self) -> String {
+        format!(
+            "$ {} {}",
+            self.program.to_string_lossy(),
+            self.args.iter().map(|arg| arg.to_string_lossy()).join(" ")
+        )
     }
 }
 
@@ -128,12 +135,7 @@ async fn command_timeout(
 }
 
 pub(crate) fn run_command_simple(expr: CommandExpression) -> Result<CommandResult> {
-    log::info!(
-        "$ {} {}",
-        &expr.program.to_string_lossy(),
-        &expr.args.iter().map(|arg| arg.to_string_lossy()).join(" ")
-    );
-    let tempdir = tempfile_builder!();
+    log::info!("$ {}", expr.to_string());
     let result = run_task(command(
         expr,
         CommandIoRedirection {
@@ -142,7 +144,6 @@ pub(crate) fn run_command_simple(expr: CommandExpression) -> Result<CommandResul
             stderr: Stdio::piped(),
         },
     ))?;
-    tempdir.close().wrap_err("Failed to delete tempdir.")?;
     describe_result(&result);
     Ok(result)
 }
@@ -154,11 +155,15 @@ fn describe_result(result: &CommandResult) {
                 "Command successfully done: {}ms elapsed.",
                 detail.elapsed.as_millis()
             );
-            log::trace!("{}", detail.stdout);
+            log::debug!("stderr:\n{}", &detail.stderr);
+            log::debug!("stdout:\n{}", abbr(&detail.stdout));
+            log::trace!("stdout:\n{}", &detail.stdout);
         }
         CommandResult::Aborted(detail) => {
             log::error!("Command aborted: {}ms elapsed.", detail.elapsed.as_millis());
-            log::error!("{}", detail.stderr)
+            log::error!("stderr:\n{}", &detail.stderr);
+            log::debug!("stdout:\n{}", abbr(&detail.stdout));
+            log::trace!("stdout:\n{}", &detail.stdout);
         }
         CommandResult::Timeout(detail) => {
             log::error!("Command timeout: {}ms elapsed.", detail.elapsed.as_millis())

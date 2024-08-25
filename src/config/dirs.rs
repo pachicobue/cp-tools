@@ -1,26 +1,60 @@
-use std::{
-    fs::create_dir_all,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
-use color_eyre::eyre::Result;
 use dirs_next;
+use include_dir::{include_dir, Dir, DirEntry};
 
-use crate::config::metadata::CRATE_NAME;
+use crate::{
+    config::metadata::CRATE_NAME,
+    core::fs::{create_sync, write_sync},
+    styled,
+};
 
 pub(crate) fn tool_workdir() -> PathBuf {
     dirs_next::data_local_dir().unwrap().join(CRATE_NAME)
 }
 
-pub fn project_workdir(dir: &Path) -> Result<PathBuf> {
+pub fn project_workdir(dir: &Path) -> PathBuf {
     let path = dir.join(".".to_string() + CRATE_NAME);
     if !path.exists() {
-        create_dir_all(&path)?;
+        create_sync(&path).unwrap();
     }
-    Ok(path)
+    path
 }
 
-pub(crate) fn init() -> Result<()> {
-    create_dir_all(tool_workdir())?;
-    Ok(())
+pub(crate) fn init() {
+    log::debug!("Creating workspace directory...");
+    let workdir = tool_workdir();
+    if !workdir.exists() {
+        log::info!("Create workspace directory.");
+        create_sync(workdir).unwrap();
+    }
+
+    log::debug!("Copying resources content...");
+    let src_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("resources");
+    let dst_dir = tool_workdir();
+    let resource_dir = include_dir!("$CARGO_MANIFEST_DIR/resources");
+    copy_resources(&resource_dir, &src_dir, &dst_dir);
+}
+
+fn copy_resources(dir: &Dir, src_dir: &Path, dst_dir: &Path) {
+    for entry in dir.entries() {
+        match entry {
+            DirEntry::Dir(subdir) => copy_resources(subdir, src_dir, dst_dir),
+            DirEntry::File(file) => {
+                let path = file.path().to_path_buf();
+                let dst_path = dst_dir.join(path);
+                if !dst_path.exists() {
+                    log::warn!(
+                        "{}",
+                        styled!(
+                            "{} does not exist!\nCreated with default settings. Please edit it!",
+                            dst_path.display()
+                        )
+                        .yellow()
+                    );
+                    write_sync(dst_path, &file.contents(), true).unwrap();
+                }
+            }
+        }
+    }
 }

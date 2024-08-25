@@ -1,55 +1,94 @@
 #--------------------------------------------------------------------------------
 # 言語毎の コンパイル/実行 方法定義
-# （*付きフィールドは必須。外部スクリプトをcommand指定する場合は絶対パスにすること）
+# （*付きフィールドは必須。外部スクリプトをcommand指定する場合は絶対パスを指定すること）
 #
 # - *name
 #   言語名（`enum Language` のフィールド名に対応）
 # - *extensions
 #   拡張子候補（`guess_language` に使用）
-# - [build]
+# - [[build]]
 #   ビルド時コマンド定義（*付きサブフィールドがビルドに必須）
-#   - *bin_path
-#     生成される実行ファイルパス（executeコマンドで ${path} に渡される）
+#   ${src_path}から${bin_path}を生成する
 #   - *command
-#   - debug_opts
-#     - Debugビルドコマンド　： $ <command> <debug_opts>
-#   - release_opts
-#     - Releaseビルドコマンド： $ <command> <release_opts>
-# - [execute] 
+#   - *args
+#   - debug_args
+#   - release_args
+# - [[execute]] 
 #   実行時コマンド定義（*付きサブフィールドが実行に必須）
-#   ${path} には [build.bin_path] が渡される
+#   ${bin_path}を実行するコマンド
 #   - *command
-# - [expand]
+#   - *args
+# - [[expand]]
 #   ファイル展開用コマンド定義（*付きサブフィールドが展開に必須）
+#   ${src_path}を展開して標準出力に吐くコマンド
 #   - *command
+#   - *args
 #
 #--------------------------------------------------------------------------------
 # 使用可能な変数名
 #
-# - ${path}: ファイルパス(ソースファイル or 実行ファイル)
+# - ${src_path}: ソースファイルパス
 #   `/home/sho/programming/main.cpp`
+# - ${bin_path}: 実行ファイルパス
 #   `/home/sho/programming/main.exe`
-# - ${dir}: ディレクトリ
-#   `/home/sho/programming/`
-# - ${name}: ファイル名
-#   `main.cpp`
-#   `main.exe`
-# - ${basename}: ${name} から拡張子を除いた部分
-#   `main`
+# - ${bundled_path}: 展開先ファイルパス
+#   `/home/sho/.local/share/cpt/bundled.cpp`
+# - ${tempdir}: 一時ディレクトリパス(一連のコマンドが終了したら削除される) 
+#   `/tmp/cpt-XXDSOI`
+#
+# 使用可能な定数名
+#
+# - ${tool_workdir}: crate全体のWorkspaceディレクトリ（`resources` 以下はここにコピーされる）
+#   `/home/sho/.local/share/cpt/`
+#
 #--------------------------------------------------------------------------------
-[[languages]]
-name = "cpp"
-extensions = ['cpp', 'cc']
-[build]
-bin_path = "${dir}/${name}.exe"
-command = "clang++ -I/home/sho/ghq/github.com/pachicobue/algolib/src -I/home/sho/ghq/github.com/atcoder/ac-library -DHOGEPACHI -std=gnu++20 -Wall -Wextra ${path} -o ${dir}/${basename}.exe"
-debug_flag = "-g3 -O0 -fsanitize=undefined,address"
-release_flag = "-O2"
-[execute]
-command = "${path}"
-[expand]
-command = """
-clang++ -E -I/home/sho/ghq/github.com/pachicobue/algolib/src -I/home/sho/ghq/github.com/atcoder/ac-library -D HOGEPACHI ${path} 
- | awk '/# [1-9][0-9]* \".*\"( [1-2])* 3/{skip=1} /# [1-9][0-9]* \".*\"( 1)? 2[^3]*$/{skip=0} (skip==0){print}'
- | clang-format 
-"""
+
+[[language]]
+name = 'cpp'
+extensions = ['cpp']
+[[language.build]]
+command = 'clang++'
+args = [
+  '-I',
+  '/home/sho/ghq/github.com/pachicobue/algolib/src',
+  '-I',
+  '/home/sho/ghq/github.com/atcoder/ac-library',
+  '-D',
+  'HOGEPACHI',
+  '-std=gnu++20',
+  '-Wall',
+  '-Wextra',
+  '${src_path}',
+  '-o',
+  '${bin_path}',
+]
+debug_args = ['-g3', '-O0', '-fsanitize=undefined,address']
+release_args = ['-O2']
+[[language.exec]]
+command = '${bin_path}'
+args = []
+[[language.expand]]
+command = 'clang++'
+args = [
+  '-E',
+  '-I',
+  '/home/sho/ghq/github.com/pachicobue/algolib/src',
+  '-I',
+  '/home/sho/ghq/github.com/atcoder/ac-library',
+  '${src_path}',
+  '-o',
+  '${tempdir}/bundled_pp.cpp',
+]
+[[language.expand]]
+command = 'awk'
+args = [
+  '''/# [1-9][0-9]* ".*"( [1-2])* 3/{skip=1} /# [1-9][0-9]* ".*"( 1)? 2[^3]*$/{skip=0} (skip==0){print > "${bundled_path}" }''',
+  '${tempdir}/bundled_pp.cpp',
+]
+[[language.expand]]
+command = 'clang-format'
+args = [
+  '${bundled_path}',
+  '--style=file:${tool_workdir}/cpp/.clang-format',
+  '-i',
+]

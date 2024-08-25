@@ -1,11 +1,11 @@
 use std::{ffi::OsString, path::PathBuf, process::Stdio};
 
 use clap::{Args, ValueHint};
-use color_eyre::eyre::{ensure, Result};
 use itertools::Itertools;
 
 use crate::{
     core::{
+        error::{TestArgumentError, TestCommandError},
         fs::{read_async, with_tempdir},
         judge::{collect_judge_paths, JudgePaths, Verdict},
         process::{command_task, CommandExpression, CommandIoRedirection, CommandResult},
@@ -29,29 +29,26 @@ pub(crate) struct TestArgs {
     timelimit: Option<f32>,
 }
 
-pub(crate) fn test(args: &TestArgs) -> Result<Vec<Verdict>> {
+pub(crate) fn test(args: &TestArgs) -> Result<Vec<Verdict>, TestCommandError> {
     log::info!("{}\n{:?}", styled!("Batch Test").bold().green(), args);
     check_args(args)?;
 
-    let verdicts = with_tempdir(|tempdir| -> Result<Vec<Verdict>> {
+    let verdicts = with_tempdir(|tempdir| -> Result<Vec<Verdict>, TestCommandError> {
         let temppath = tempdir.path();
-
         let judge_paths = collect_judge_paths(&args.directory, temppath);
-        log::debug!("judge_paths: {:#?}", &judge_paths);
         if judge_paths.is_empty() {
-            log::error!("No testcase found!");
+            return Err(TestCommandError::TestCaseNotFound);
         }
         let check_tasks = judge_paths
             .into_iter()
             .map(|judge_path| judge_single(args.command.clone(), judge_path, args.timelimit))
             .collect_vec();
-        let verdicts = run_tasks(check_tasks)?;
-        Ok(verdicts)
-    })??;
+        Ok(run_tasks(check_tasks))
+    })?;
     Ok(verdicts)
 }
 
-async fn judge_single(command: String, judge_path: JudgePaths, tl: Option<f32>) -> Result<Verdict> {
+async fn judge_single(command: String, judge_path: JudgePaths, tl: Option<f32>) -> Verdict {
     let sol_result = command_task(
         CommandExpression::new(command, Vec::<OsString>::new()),
         CommandIoRedirection {
@@ -61,36 +58,33 @@ async fn judge_single(command: String, judge_path: JudgePaths, tl: Option<f32>) 
         },
         tl,
     )
-    .await?;
+    .await;
     match sol_result {
         CommandResult::Success(detail) => {
             if let Some(expect_path) = judge_path.expect {
                 let actual = detail.stdout;
-                let expect = read_async(&expect_path).await?;
-                Ok(if actual == expect {
+                let expect = read_async(&expect_path).await.unwrap();
+                if actual == expect {
                     Verdict::Ac
                 } else {
                     Verdict::Wa
-                })
+                }
             } else {
-                Ok(Verdict::Ac)
+                Verdict::Ac
             }
         }
-        CommandResult::Aborted(_) => Ok(Verdict::Re),
-        CommandResult::Timeout(_) => Ok(Verdict::Tle),
+        CommandResult::Aborted(_) => Verdict::Re,
+        CommandResult::Timeout(_) => Verdict::Tle,
     }
 }
 
-fn check_args(args: &TestArgs) -> Result<()> {
-    ensure!(
-        &args.directory.exists(),
-        "`{}` not found.",
-        &args.directory.display()
-    );
-    ensure!(
-        &args.directory.is_dir(),
-        "`{}` is not directory.",
-        &args.directory.display()
-    );
+fn check_args(args: &TestArgs) -> Result<(), TestArgumentError> {
+    let dir = args.directory.clone();
+    if !dir.exists() {
+        return Err(TestArgumentError::CasedirIsNotFound(dir));
+    }
+    if !dir.is_dir() {
+        return Err(TestArgumentError::CasedirIsNotDirectory(dir));
+    }
     Ok(())
 }

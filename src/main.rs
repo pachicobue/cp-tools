@@ -2,9 +2,10 @@ mod commands;
 mod config;
 mod core;
 
+use core::error::{ApplicationError, ToTraverseErrorMessage};
+
 use clap::Parser;
 use clap_verbosity_flag::{InfoLevel, Verbosity};
-use color_eyre::eyre::Result;
 
 use crate::commands::{exec_command, Command};
 
@@ -19,9 +20,16 @@ pub(crate) struct Cli {
     command: Command,
 }
 
-fn main() -> Result<()> {
-    let args = Cli::parse();
+fn main() {
+    let res = inner();
+    if res.is_err() {
+        let msg = res.unwrap_err().to_traverse_error_message();
+        log::error!("{}", msg);
+    }
+}
 
+fn inner() -> Result<(), ApplicationError> {
+    let args = Cli::parse();
     config::init(args.verbose.log_level_filter())?;
     exec_command(&args.command)?;
     Ok(())

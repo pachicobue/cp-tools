@@ -1,19 +1,14 @@
 use std::path::Path;
 
-use color_eyre::eyre::{ensure, Context, ContextCompat, OptionExt, Result};
 use tempfile::{self, TempDir};
 use tokio;
 
+use super::error::FilesystemError;
 use crate::config::metadata::CRATE_NAME;
 
-pub(crate) fn read_sync(filepath: impl AsRef<Path>) -> Result<String> {
-    ensure!(
-        filepath.as_ref().exists(),
-        "`{}` does not exist.",
-        filepath.as_ref().display()
-    );
+pub(crate) fn read_sync(filepath: impl AsRef<Path>) -> Result<String, FilesystemError> {
     let content = std::fs::read_to_string(filepath.as_ref())
-        .wrap_err(format!("Failed to read `{}`.", filepath.as_ref().display()))?;
+        .map_err(|_| FilesystemError::ReadFileError(filepath.as_ref().to_path_buf()))?;
     Ok(content)
 }
 
@@ -21,47 +16,31 @@ pub(crate) fn write_sync(
     filepath: impl AsRef<Path>,
     content: impl AsRef<[u8]>,
     ensure_exist: bool,
-) -> Result<()> {
+) -> Result<(), FilesystemError> {
     if ensure_exist {
-        let dir = filepath.as_ref().parent().ok_or_eyre(format!(
-            "Failed to get parent of `{}`.",
-            filepath.as_ref().display()
-        ))?;
-        std::fs::create_dir_all(dir).wrap_err(format!(
-            "Failed to create directory `{}` recursively.",
-            dir.display()
-        ))?;
+        let dir = filepath.as_ref().parent().unwrap();
+        std::fs::create_dir_all(dir)
+            .map_err(|_| FilesystemError::CreateDirError(dir.to_path_buf()))?;
     }
-    std::fs::write(filepath.as_ref(), &content).wrap_err(format!(
-        "Failed to write `{}`.",
-        filepath.as_ref().display()
-    ))?;
+    std::fs::write(filepath.as_ref(), &content)
+        .map_err(|_| FilesystemError::WriteFileError(filepath.as_ref().to_path_buf()))?;
     Ok(())
 }
 
-pub(crate) fn open_sync(filepath: impl AsRef<Path>) -> Result<std::fs::File> {
-    std::fs::File::open(filepath.as_ref()).wrap_err(format!(
-        "Failed to open file `{}`.",
-        filepath.as_ref().display()
-    ))
+pub(crate) fn open_sync(filepath: impl AsRef<Path>) -> Result<std::fs::File, FilesystemError> {
+    std::fs::File::open(filepath.as_ref())
+        .map_err(|_| FilesystemError::OpenFileError(filepath.as_ref().to_path_buf()))
 }
 
-pub(crate) fn create_sync(filepath: impl AsRef<Path>) -> Result<std::fs::File> {
-    std::fs::File::create(filepath.as_ref()).wrap_err(format!(
-        "Failed to create file `{}`.",
-        filepath.as_ref().display()
-    ))
+pub(crate) fn create_sync(filepath: impl AsRef<Path>) -> Result<std::fs::File, FilesystemError> {
+    std::fs::File::create(filepath.as_ref())
+        .map_err(|_| FilesystemError::CreateDirError(filepath.as_ref().to_path_buf()))
 }
 
-pub(crate) async fn read_async(filepath: impl AsRef<Path>) -> Result<String> {
-    ensure!(
-        filepath.as_ref().exists(),
-        "`{}` does not exist.",
-        filepath.as_ref().display()
-    );
+pub(crate) async fn read_async(filepath: impl AsRef<Path>) -> Result<String, FilesystemError> {
     let content = tokio::fs::read_to_string(filepath.as_ref())
         .await
-        .wrap_err(format!("Failed to read `{}`.", filepath.as_ref().display()))?;
+        .map_err(|_| FilesystemError::ReadFileError(filepath.as_ref().to_path_buf()))?;
     Ok(content)
 }
 
@@ -69,64 +48,53 @@ pub(crate) async fn write_async(
     filepath: impl AsRef<Path>,
     content: impl AsRef<[u8]>,
     ensure_exist: bool,
-) -> Result<()> {
+) -> Result<(), FilesystemError> {
     if ensure_exist {
-        let dir = filepath.as_ref().parent().ok_or_eyre(format!(
-            "Failed to get parent of `{}`.",
-            filepath.as_ref().display()
-        ))?;
+        let dir = filepath.as_ref().parent().unwrap();
         tokio::fs::create_dir_all(dir)
             .await
-            .wrap_err(format!("Failed to create `{}` recursively.", dir.display()))?;
+            .map_err(|_| FilesystemError::CreateDirError(dir.to_path_buf()))?;
     }
     tokio::fs::write(filepath.as_ref(), &content)
         .await
-        .wrap_err(format!(
-            "Failed to write `{}`.",
-            filepath.as_ref().display()
-        ))?;
+        .map_err(|_| FilesystemError::WriteFileError(filepath.as_ref().to_path_buf()))?;
     Ok(())
 }
 
-pub(crate) async fn create_async(filepath: impl AsRef<Path>) -> Result<tokio::fs::File> {
-    tokio::fs::File::create(filepath.as_ref())
-        .await
-        .wrap_err(format!(
-            "Failed to create file `{}`.",
-            filepath.as_ref().display()
-        ))
-}
-
-pub(crate) async fn open_async(filepath: impl AsRef<Path>) -> Result<tokio::fs::File> {
+pub(crate) async fn open_async(
+    filepath: impl AsRef<Path>,
+) -> Result<tokio::fs::File, FilesystemError> {
     tokio::fs::File::open(filepath.as_ref())
         .await
-        .wrap_err(format!(
-            "Failed to open file `{}`.",
-            filepath.as_ref().display()
-        ))
+        .map_err(|_| FilesystemError::OpenFileError(filepath.as_ref().to_path_buf()))
 }
 
-pub(crate) fn filename(filepath: impl AsRef<Path>) -> Result<String> {
-    Ok(filepath
+pub(crate) async fn create_async(
+    filepath: impl AsRef<Path>,
+) -> Result<tokio::fs::File, FilesystemError> {
+    tokio::fs::File::create(filepath.as_ref())
+        .await
+        .map_err(|_| FilesystemError::CreateDirError(filepath.as_ref().to_path_buf()))
+}
+
+pub(crate) fn filename(filepath: impl AsRef<Path>) -> String {
+    filepath
         .as_ref()
         .file_stem()
-        .wrap_err(format!(
-            "Failed to get filestem from `{}`",
-            filepath.as_ref().display(),
-        ))?
+        .unwrap()
         .to_string_lossy()
-        .to_string())
+        .to_string()
 }
 
-pub(crate) fn with_tempdir<F, R>(func: F) -> Result<R>
+pub(crate) fn with_tempdir<F, R>(func: F) -> R
 where
     F: FnOnce(&TempDir) -> R,
 {
     let tempdir = tempfile::Builder::new()
         .prefix(&format!("{}-", CRATE_NAME))
         .tempdir()
-        .wrap_err("Failed to build tempdir.")?;
+        .unwrap();
     let result = func(&tempdir);
-    tempdir.close().wrap_err("Failed to close tempdir.")?;
-    Ok(result)
+    tempdir.close().unwrap();
+    result
 }

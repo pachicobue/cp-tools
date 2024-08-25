@@ -1,16 +1,15 @@
-pub mod beautify;
-pub mod dummy_headers;
-
 use std::path::{Path, PathBuf};
 
 use clap::{Args, ValueHint};
-use color_eyre::eyre::{ensure, OptionExt, Result};
 
-use self::beautify::beautify;
 use crate::{
-    commands::compilation::{CompileCommand, CompileMode},
     config::dirs::project_workdir,
-    core::fs::{filename, write_sync},
+    core::{
+        error::{ExpandArgumentError, ExpandCommandError},
+        fs::{filename, with_tempdir, write_sync},
+        language::{ensure_expandable, expand_command, guess_lang},
+        process::run_command_simple,
+    },
     styled,
 };
 
@@ -35,22 +34,27 @@ pub(crate) struct ExpandArgs {
 /// ## Note
 /// - 展開処理の結果は`output`で指定されたファイルに出力される
 ///   - `output`が指定されない場合は、`Bundled.cpp`に出力される
-pub(crate) fn expand(args: &ExpandArgs) -> Result<()> {
+pub(crate) fn expand(args: &ExpandArgs) -> Result<(), ExpandCommandError> {
     log::info!("{}\n{:?}", styled!("Expand program").bold().green(), args);
     check_args(args)?;
 
-    let dummy_header_dir = dummy_headers::generate()?;
-
+    let src = args.file.clone();
     let dst = match &args.output {
         Some(s) => PathBuf::from(&s),
-        None => default_output_path(&args.file)?,
+        None => default_output_path(&args.file),
     };
-    let mut command = CompileCommand::load_config(CompileMode::Expand)?;
-    // command.include_dirs.push(dummy_header_dir);
-    let output = command.exec_compilation(&args.file, None)?;
 
-    // write_sync(&dst, beautify(&output)?, true)?;
-    write_sync(&dst, &output, true)?;
+    let lang = guess_lang(&src).unwrap();
+    with_tempdir(|tempdir| {
+        let exprs = expand_command(lang.clone(), &args.file, &dst, tempdir.path());
+        for expr in exprs {
+            let result = run_command_simple(expr);
+            if !result.is_success() {
+                return Err(ExpandCommandError::ExpandCommandError);
+            }
+        }
+        Ok(())
+    })?;
 
     log::info!(
         "{}\nInput : {}\nOutput: {}",
@@ -61,20 +65,19 @@ pub(crate) fn expand(args: &ExpandArgs) -> Result<()> {
     Ok(())
 }
 
-fn check_args(args: &ExpandArgs) -> Result<()> {
-    ensure!(
-        args.file.exists(),
-        "Input File {} not found.",
-        args.file.to_string_lossy()
-    );
-    ensure!(
-        args.file.extension().ok_or_eyre("Failed to get ext.")? == "cpp",
-        "Only .cpp files are supported."
-    );
+fn check_args(args: &ExpandArgs) -> Result<(), ExpandArgumentError> {
+    let src_file = args.file.clone();
+    if !src_file.exists() {
+        return Err(ExpandArgumentError::SourcefileIsNotFound(src_file));
+    }
+    if !src_file.is_file() {
+        return Err(ExpandArgumentError::SourcefileIsNotFile(src_file));
+    }
+    ensure_expandable(&src_file)?;
     Ok(())
 }
 
-fn default_output_path(filepath: &Path) -> Result<PathBuf> {
-    let basedir = project_workdir(filepath.parent().ok_or_eyre("Failed to get parent.")?)?;
-    Ok(basedir.join(filename(filepath)? + "_bundled.cpp"))
+fn default_output_path(filepath: &Path) -> PathBuf {
+    let basedir = project_workdir(filepath.parent().unwrap());
+    basedir.join(filename(filepath) + "_bundled.cpp")
 }

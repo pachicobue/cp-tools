@@ -4,24 +4,24 @@ use std::{
     time::Duration,
 };
 
-use color_eyre::eyre::{eyre, Context, Result};
 use itertools::Itertools;
+use strum;
 use tokio;
 
 use crate::core::{printer::abbr, task::run_task};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, strum::EnumIs)]
 pub(crate) enum CommandResult {
     Success(CommandResultDetail),
     Aborted(CommandResultDetail),
     Timeout(CommandResultDetail),
 }
 impl CommandResult {
-    pub(crate) fn detail_of_success(&self) -> Result<CommandResultDetail> {
+    pub(crate) fn get_detail(&self) -> &CommandResultDetail {
         match self {
-            Self::Success(detail) => Ok(detail.clone()),
-            Self::Aborted(_) => Err(eyre!("Aborted")),
-            Self::Timeout(_) => Err(eyre!("Timeout")),
+            Self::Success(detail) => detail,
+            Self::Aborted(detail) => detail,
+            Self::Timeout(detail) => detail,
         }
     }
 }
@@ -49,14 +49,14 @@ impl CommandExpression {
             program: program.as_ref().to_os_string(),
             args: args
                 .into_iter()
-                .map(|e| e.as_ref().to_os_string())
+                .map(|arg| arg.as_ref().to_os_string())
                 .collect_vec(),
         }
     }
 
     pub(crate) fn to_string(&self) -> String {
         format!(
-            "$ {} {}",
+            "{} {}",
             self.program.to_string_lossy(),
             self.args.iter().map(|arg| arg.to_string_lossy()).join(" ")
         )
@@ -74,7 +74,7 @@ pub async fn command_task(
     expr: CommandExpression,
     redirect: CommandIoRedirection,
     timeout: Option<f32>,
-) -> Result<CommandResult> {
+) -> CommandResult {
     if let Some(timeout_sec) = timeout {
         command_timeout(expr, redirect, timeout_sec).await
     } else {
@@ -82,7 +82,7 @@ pub async fn command_task(
     }
 }
 
-async fn command(expr: CommandExpression, redirect: CommandIoRedirection) -> Result<CommandResult> {
+async fn command(expr: CommandExpression, redirect: CommandIoRedirection) -> CommandResult {
     let mut command = tokio::process::Command::new(&expr.program);
 
     let start = tokio::time::Instant::now();
@@ -92,19 +92,19 @@ async fn command(expr: CommandExpression, redirect: CommandIoRedirection) -> Res
         .stdout(redirect.stdout)
         .stderr(redirect.stderr)
         .spawn()
-        .wrap_err("Failed to spawn child process.")?
+        .expect("Command failed to start")
         .wait_with_output()
         .await
-        .wrap_err("Failed to get output from process.")?;
+        .expect("Command failed to run");
     let detail = CommandResultDetail {
         stdout: String::from_utf8_lossy(&output.stdout).into(),
         stderr: String::from_utf8_lossy(&output.stderr).into(),
         elapsed: tokio::time::Instant::now() - start,
     };
     if output.status.success() {
-        Ok(CommandResult::Success(detail))
+        CommandResult::Success(detail)
     } else {
-        Ok(CommandResult::Aborted(detail))
+        CommandResult::Aborted(detail)
     }
 }
 
@@ -112,29 +112,29 @@ async fn command_timeout(
     expr: CommandExpression,
     redirect: CommandIoRedirection,
     timeout_sec: f32,
-) -> Result<CommandResult> {
+) -> CommandResult {
     let tl = Duration::from_secs_f32(timeout_sec);
     match tokio::time::timeout(tl * 2, command(expr, redirect)).await {
-        Ok(wrapped_result) => match wrapped_result? {
+        Ok(wrapped_result) => match wrapped_result {
             CommandResult::Success(detail) => {
                 if detail.elapsed <= tl {
-                    Ok(CommandResult::Success(detail))
+                    CommandResult::Success(detail)
                 } else {
-                    Ok(CommandResult::Timeout(detail))
+                    CommandResult::Timeout(detail)
                 }
             }
-            CommandResult::Aborted(detail) => Ok(CommandResult::Aborted(detail)),
+            CommandResult::Aborted(detail) => CommandResult::Aborted(detail),
             _ => unreachable!(),
         },
-        Err(_) => Ok(CommandResult::Timeout(CommandResultDetail {
+        Err(_) => CommandResult::Timeout(CommandResultDetail {
             stdout: "".into(),
             stderr: "".into(),
             elapsed: tl * 2,
-        })),
+        }),
     }
 }
 
-pub(crate) fn run_command_simple(expr: CommandExpression) -> Result<CommandResult> {
+pub(crate) fn run_command_simple(expr: CommandExpression) -> CommandResult {
     log::info!("$ {}", expr.to_string());
     let result = run_task(command(
         expr,
@@ -143,9 +143,9 @@ pub(crate) fn run_command_simple(expr: CommandExpression) -> Result<CommandResul
             stdout: Stdio::piped(),
             stderr: Stdio::piped(),
         },
-    ))?;
+    ));
     describe_result(&result);
-    Ok(result)
+    result
 }
 
 fn describe_result(result: &CommandResult) {

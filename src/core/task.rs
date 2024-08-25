@@ -1,38 +1,34 @@
 use std::{fmt::Debug, future::Future};
 
-use color_eyre::eyre::{Context, Result};
 use tokio;
 
 pub(crate) fn run_task<
-    T: Debug + Clone + Send + 'static,
-    F: Future<Output = Result<T>> + Send + 'static,
+    T: Clone + Debug + Send + 'static,
+    F: Future<Output = T> + Send + 'static,
 >(
     task: F,
-) -> Result<T> {
-    let results = run_tasks(vec![task])?;
-    Ok(results.first().unwrap().clone())
+) -> T {
+    run_tasks(vec![task]).first().unwrap().clone()
 }
 
 pub(crate) fn run_tasks<
-    T: Debug + Clone + Send + 'static,
-    F: Future<Output = Result<T>> + Send + 'static,
+    T: Clone + Debug + Send + 'static,
+    F: Future<Output = T> + Send + 'static,
 >(
     tasks: Vec<F>,
-) -> Result<Vec<T>> {
+) -> Vec<T> {
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
-        .wrap_err("Failed to build tokio-runtime.")?;
+        .unwrap();
     runtime
         .block_on(runtime.spawn(async move {
-            let handles = tasks
-                .into_iter()
-                .map(|task| tokio::task::spawn(task));
+            let handles = tasks.into_iter().map(|task| tokio::task::spawn(task));
             let mut results = vec![];
             for handle in handles {
-                results.push(handle.await.wrap_err("Failed to join.")??)
+                results.push(handle.await.unwrap())
             }
-            Ok(results)
+            results
         }))
-        .wrap_err("Failed to join tokio tasks.")?
+        .unwrap()
 }

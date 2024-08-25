@@ -1,79 +1,71 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use clap::{Args, ValueHint};
-use color_eyre::eyre::{ensure, OptionExt, Result};
 
-use super::compilation::{CompileCommand, CompileMode};
-use crate::styled;
+use crate::{
+    core::{
+        error::{BuildArgumentError, BuildCommandError},
+        fs::with_tempdir,
+        language::{build_command, ensure_buildable, guess_lang},
+        process::run_command_simple,
+    },
+    styled,
+};
 
 #[derive(Args, Debug)]
 pub(crate) struct BuildArgs {
-    /// 入力ファイル(.cppのみ対応)
+    /// 入力ファイル
     #[arg(required = true, value_hint(ValueHint::FilePath))]
     pub(crate) file: PathBuf,
 
     /// 出力先ファイル
     #[arg(short = 'o', long, value_hint(ValueHint::FilePath))]
-    pub(crate) output: Option<PathBuf>,
+    pub(crate) output: PathBuf,
 
     /// コンパイル最適化フラグ
     #[arg(long, default_value_t = false)]
     pub(crate) release: bool,
 }
 
-/// ファイルのビルドを行う
-///
-///
-/// ## Args
-/// - `args`: 展開処理の引数
-///   - `file`: 入力ファイル(.cppのみ対応)
-///   - `output`: 出力先ファイル(未指定時は`${basename}.exe`)
-///   - `release`: コンパイル最適化フラグ(デフォルトはfalse)
-///
-/// ## Note
-/// - ファイルはcppファイルのみ対応
-/// - ビルド結果は`output`で指定されたファイルに出力される
-///  - `output`が指定されない場合は、`${basename}.exe`に出力される
-///  - `${basename}`は`file`の拡張子を除いたもの
-/// - コンパイル最適化フラグが指定された場合、リリースモードでビルドされる
-pub(crate) fn build(args: &BuildArgs) -> Result<PathBuf> {
+pub(crate) fn build(args: &BuildArgs) -> Result<(), BuildCommandError> {
     log::info!("{}\n{:?}", styled!("Build program").bold().green(), args);
 
     check_args(args)?;
-
-    let command = CompileCommand::load_config(if args.release {
-        CompileMode::Release
-    } else {
-        CompileMode::Debug
+    let lang = guess_lang(&args.file).unwrap();
+    with_tempdir(|tempdir| {
+        let exprs = build_command(
+            lang.clone(),
+            &args.file,
+            &args.output,
+            args.release,
+            tempdir.path(),
+        );
+        for expr in exprs {
+            let result = run_command_simple(expr);
+            if !result.is_success() {
+                return Err(BuildCommandError::BuildCommandError);
+            }
+        }
+        Ok(())
     })?;
-    let dst = match &args.output {
-        Some(s) => PathBuf::from(s),
-        None => default_exe(&args.file),
-    };
-    command.exec_compilation(&args.file, Some(&dst))?;
 
     log::info!(
         "{}\nInput : {}\nOutput: {}",
         styled!("Build completed").bold().green(),
         args.file.display(),
-        dst.display()
+        args.output.display()
     );
-    Ok(dst)
+    Ok(())
 }
 
-pub(crate) fn default_exe(cpp_path: &Path) -> PathBuf {
-    PathBuf::from(cpp_path).with_extension("exe")
-}
-
-fn check_args(args: &BuildArgs) -> Result<()> {
-    ensure!(
-        args.file.exists(),
-        "Input File {} not found.",
-        args.file.to_string_lossy()
-    );
-    ensure!(
-        args.file.extension().ok_or_eyre("Failed to get ext.")? == "cpp",
-        "Only .cpp file is supported."
-    );
+fn check_args(args: &BuildArgs) -> Result<(), BuildArgumentError> {
+    let src_file = args.file.clone();
+    if !src_file.exists() {
+        return Err(BuildArgumentError::SourcefileIsNotFound(src_file));
+    }
+    if !src_file.is_file() {
+        return Err(BuildArgumentError::SourcefileIsNotFile(src_file));
+    }
+    ensure_buildable(&args.file)?;
     Ok(())
 }

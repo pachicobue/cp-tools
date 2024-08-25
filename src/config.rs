@@ -1,13 +1,14 @@
 pub mod dirs;
 pub mod logger;
 pub mod metadata;
-use color_eyre::eyre::Result;
+
 use log::LevelFilter;
 
-pub(crate) fn init(level: LevelFilter) -> Result<()> {
-    console_subscriber::init();
-    color_eyre::install()?;
-    logger::init(level)?;
-    dirs::init()?;
+use crate::core::{error::InitializationError, language};
+
+pub(crate) fn init(level: LevelFilter) -> Result<(), InitializationError> {
+    logger::init(level);
+    dirs::init();
+    language::init()?;
     Ok(())
 }

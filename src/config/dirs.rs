@@ -1,13 +1,12 @@
-use std::path::{Path, PathBuf};
+use std::{
+    fs::create_dir_all,
+    path::{Path, PathBuf},
+};
 
 use dirs_next;
 use include_dir::{include_dir, Dir, DirEntry};
 
-use crate::{
-    config::metadata::CRATE_NAME,
-    core::fs::{create_sync, write_sync},
-    styled,
-};
+use crate::{config::metadata::CRATE_NAME, core::fs::write_sync, styled};
 
 pub(crate) fn tool_workdir() -> PathBuf {
     dirs_next::data_local_dir().unwrap().join(CRATE_NAME)
@@ -16,7 +15,7 @@ pub(crate) fn tool_workdir() -> PathBuf {
 pub fn project_workdir(dir: &Path) -> PathBuf {
     let path = dir.join(".".to_string() + CRATE_NAME);
     if !path.exists() {
-        create_sync(&path).unwrap();
+        create_dir_all(&path).unwrap();
     }
     path
 }
@@ -26,7 +25,7 @@ pub(crate) fn init() {
     let workdir = tool_workdir();
     if !workdir.exists() {
         log::info!("Create workspace directory.");
-        create_sync(workdir).unwrap();
+        create_dir_all(workdir).unwrap();
     }
 
     log::debug!("Copying resources content...");

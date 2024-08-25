@@ -5,7 +5,7 @@ use clap::{Args, ValueHint};
 use crate::{
     core::{
         error::{BuildArgumentError, BuildCommandError},
-        fs::with_tempdir,
+        fs::{create_sync, with_tempdir},
         language::{build_command, ensure_buildable, guess_lang},
         process::run_command_simple,
     },

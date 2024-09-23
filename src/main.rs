@@ -20,6 +20,7 @@ pub(crate) struct Cli {
     command: Command,
 }
 
+/// アプリケーションのエントリポイント
 fn main() {
     let res = inner();
     if res.is_err() {
@@ -28,6 +29,7 @@ fn main() {
     }
 }
 
+/// アプリケーションの内部処理 
 fn inner() -> Result<(), ApplicationError> {
     let args = Cli::parse();
     config::init(args.verbose.log_level_filter())?;

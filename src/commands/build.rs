@@ -12,6 +12,7 @@ use crate::{
     styled,
 };
 
+/// ビルドコマンドの引数を格納する構造体
 #[derive(Args, Debug)]
 pub(crate) struct BuildArgs {
     /// 入力ファイル
@@ -27,6 +28,15 @@ pub(crate) struct BuildArgs {
     pub(crate) release: bool,
 }
 
+/// ビルドコマンドを実行する関数
+///
+/// # 引数
+///
+/// * `args` - ビルドコマンドの引数
+///
+/// # 戻り値
+///
+/// ビルドに成功した場合は`Ok(())`、失敗した場合は`BuildCommandError`を返す
 pub(crate) fn build(args: &BuildArgs) -> Result<(), BuildCommandError> {
     log::info!("{}\n{:?}", styled!("Build program").bold().green(), args);
 
@@ -58,6 +68,15 @@ pub(crate) fn build(args: &BuildArgs) -> Result<(), BuildCommandError> {
     Ok(())
 }
 
+/// ビルドコマンドの引数をチェックする関数
+///
+/// # 引数
+///
+/// * `args` - ビルドコマンドの引数
+///
+/// # 戻り値
+///
+/// 引数が有効な場合は`Ok(())`、無効な場合は`BuildArgumentError`を返す
 fn check_args(args: &BuildArgs) -> Result<(), BuildArgumentError> {
     let src_file = args.file.clone();
     if !src_file.exists() {

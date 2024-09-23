@@ -14,6 +14,7 @@ use crate::{
     styled,
 };
 
+/// テストコマンドの引数を格納する構造体
 #[derive(Args, Debug)]
 pub(crate) struct TestArgs {
     /// 実行コマンド
@@ -29,6 +30,14 @@ pub(crate) struct TestArgs {
     timelimit: Option<f32>,
 }
 
+/// テストコマンドを実行する関数
+///
+/// # 引数
+///
+/// * `args` - テストコマンドの引数
+///
+/// # 戻り値
+///
 pub(crate) fn test(args: &TestArgs) -> Result<Vec<Verdict>, TestCommandError> {
     log::info!("{}\n{:?}", styled!("Batch Test").bold().green(), args);
     check_args(args)?;
@@ -48,6 +57,17 @@ pub(crate) fn test(args: &TestArgs) -> Result<Vec<Verdict>, TestCommandError> {
     Ok(verdicts)
 }
 
+/// 単一のテストケースを判定する関数
+///
+/// # 引数
+///
+/// * `command` - 実行コマンド
+/// * `judge_path` - 判定に使用するパス
+/// * `tl` - タイムリミット
+///
+/// # 戻り値
+///
+/// 判定結果
 async fn judge_single(command: String, judge_path: JudgePaths, tl: Option<f32>) -> Verdict {
     let sol_result = command_task(
         CommandExpression::new(command, Vec::<OsString>::new()),
@@ -78,6 +98,15 @@ async fn judge_single(command: String, judge_path: JudgePaths, tl: Option<f32>) 
     }
 }
 
+/// テストコマンドの引数をチェックする関数
+///
+/// # 引数
+///
+/// * `args` - テストコマンドの引数
+///
+/// # 戻り値
+///
+/// 引数が有効な場合は`Ok(())`、無効な場合は`TestArgumentError`を返す
 fn check_args(args: &TestArgs) -> Result<(), TestArgumentError> {
     let dir = args.directory.clone();
     if !dir.exists() {

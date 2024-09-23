@@ -15,7 +15,7 @@ use crate::{
 
 #[derive(Args, Debug)]
 pub(crate) struct ExpandArgs {
-    /// 入力ファイル(.cppのみ対応)
+    /// 入力ファイル
     #[arg(required = true, value_hint = ValueHint::FilePath)]
     file: PathBuf,
 

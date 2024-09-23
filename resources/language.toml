@@ -1,28 +1,24 @@
 #--------------------------------------------------------------------------------
 # 言語毎の コンパイル/実行 方法定義
-# （*付きフィールドは必須。外部スクリプトをcommand指定する場合は絶対パスを指定すること）
 #
-# - *name
+# - name
 #   言語名（`enum Language` のフィールド名に対応）
-# - *extensions
-#   拡張子候補（`guess_language` に使用）
+# - exts
+#   ソースファイルの拡張子候補（`guess_language` に使用）
 # - [[build]]
-#   ビルド時コマンド定義（*付きサブフィールドがビルドに必須）
-#   ${src_path}から${bin_path}を生成する
-#   - *command
-#   - *args
-#   - debug_args
-#   - release_args
+#   ビルド時コマンド定義（${src_path}から${bin_path}を生成する）
+#   - command
+#   - args
+#   - *debug_args
+#   - *release_args
 # - [[execute]] 
-#   実行時コマンド定義（*付きサブフィールドが実行に必須）
-#   ${bin_path}を実行するコマンド
-#   - *command
-#   - *args
+#   実行時コマンド定義（${bin_path}を実行する）
+#   - command
+#   - args
 # - [[expand]]
-#   ファイル展開用コマンド定義（*付きサブフィールドが展開に必須）
-#   ${src_path}を展開して標準出力に吐くコマンド
-#   - *command
-#   - *args
+#   ファイル展開用コマンド定義（${src_path}を展開して${bundled_path}を生成する）
+#   - command
+#   - args
 #
 #--------------------------------------------------------------------------------
 # 使用可能な変数名
@@ -45,7 +41,7 @@
 
 [[language]]
 name = 'cpp'
-extensions = ['cpp']
+exts = ['cpp']
 [[language.build]]
 command = 'clang++'
 args = [

@@ -12,6 +12,15 @@ pub(crate) fn tool_workdir() -> PathBuf {
     dirs_next::data_local_dir().unwrap().join(CRATE_NAME)
 }
 
+/// プロジェクトの作業ディレクトリを取得する関数
+///
+/// # 引数
+///
+/// * `dir` - プロジェクトのディレクトリ
+///
+/// # 戻り値
+///
+/// プロジェクトの作業ディレクトリのパス
 pub fn project_workdir(dir: &Path) -> PathBuf {
     let path = dir.join(".".to_string() + CRATE_NAME);
     if !path.exists() {
@@ -20,6 +29,15 @@ pub fn project_workdir(dir: &Path) -> PathBuf {
     path
 }
 
+/// プロジェクトの作業ディレクトリを初期化する関数
+///
+/// # 引数
+///
+/// * `dir` - プロジェクトのディレクトリ
+///
+/// # 戻り値
+///
+/// なし    
 pub(crate) fn init() {
     log::debug!("Creating workspace directory...");
     let workdir = tool_workdir();
@@ -35,6 +53,17 @@ pub(crate) fn init() {
     copy_resources(&resource_dir, &src_dir, &dst_dir);
 }
 
+/// リソースディレクトリの内容をコピーする関数
+///
+/// # 引数
+///
+/// * `dir` - リソースディレクトリ
+/// * `src_dir` - ソースディレクトリ
+/// * `dst_dir` - ディレクトリ
+///
+/// # 戻り値
+///
+/// なし    
 fn copy_resources(dir: &Dir, src_dir: &Path, dst_dir: &Path) {
     for entry in dir.entries() {
         match entry {

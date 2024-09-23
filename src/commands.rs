@@ -16,6 +16,7 @@ use crate::{
     core::error::CommandError,
 };
 
+/// コマンドを格納する列挙体
 #[derive(Subcommand, Debug, strum::Display)]
 pub(crate) enum Command {
     #[command(visible_alias = "e")]
@@ -31,6 +32,14 @@ pub(crate) enum Command {
     Completion(CompletionArgs),
 }
 
+/// コマンドを実行する関数
+///
+/// # 引数
+///
+/// * `command` - 実行するコマンド
+///
+/// # 戻り値
+/// コマンドの実行結果
 pub(crate) fn exec_command(command: &Command) -> Result<(), CommandError> {
     match command {
         Command::Expand(args) => {

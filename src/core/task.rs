@@ -2,6 +2,14 @@ use std::{fmt::Debug, future::Future};
 
 use tokio;
 
+/// タスクを実行する関数
+///
+/// # 引数
+///
+/// * `task` - 実行するタスク
+///
+/// # 戻り値
+///
 pub(crate) fn run_task<
     T: Clone + Debug + Send + 'static,
     F: Future<Output = T> + Send + 'static,
@@ -11,6 +19,15 @@ pub(crate) fn run_task<
     run_tasks(vec![task]).first().unwrap().clone()
 }
 
+/// タスクを実行する関数
+///
+/// # 引数
+///
+/// * `tasks` - 実行するタスクのリスト
+///
+/// # 戻り値
+///
+/// タスクの実行結果のリスト
 pub(crate) fn run_tasks<
     T: Clone + Debug + Send + 'static,
     F: Future<Output = T> + Send + 'static,

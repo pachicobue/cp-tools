@@ -1,0 +1,50 @@
+[config]
+skip_core_tasks = true
+
+[env]
+RUST_BACKTRACE = "1"
+RUST_LOG = "cpt"
+
+[tasks.default]
+command = "makers"
+args = ["--list-all-steps"]
+
+[tasks.run]
+description = "cargo run"
+command = "cargo"
+args = ["run", "${@}"]
+
+[tasks.test]
+description = "cargo test"
+command = "cargo"
+args = ["test"]
+
+[tasks.install]
+category = "Publish"
+description = "cargo install --path ."
+command = "cargo"
+args = ["install", "--path", "."]
+
+[tasks.bundle-licenses]
+category = "Publish"
+description = "cargo-bundle-licenses"
+command = "cargo-bundle-licenses"
+args = ["-o", "THIRD-PARTY-LICENSES.toml"]
+
+[tasks.clippy]
+category = "CI"
+description = "cargo-clippy --all -- -Dclippy::all"
+command = "cargo-clippy"
+args = ["--all", "--", "-Dclippy::all"]
+
+[tasks.format-check]
+category = "CI"
+description = "cargo fmt -- --check"
+command = "cargo"
+args = ["fmt", "--", "--check"]
+
+[tasks.deny]
+category = "CI"
+description = "cargo deny check"
+command = "cargo"
+args = ["deny", "check"]

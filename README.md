@@ -1,2 +1,7 @@
 # cp-tools(cpt)
-競プロ用のコマンドラインツール集
+
+Commandline tools for competitive programming.
+
+## Features
+
+- Build

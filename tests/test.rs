@@ -5,10 +5,8 @@ use std::{
 };
 
 use assert_cmd::prelude::*;
-use color_eyre::eyre::Result;
-use predicates::prelude::*;
 
-use crate::common::{with_tempdir, write_sync, CRATE_NAME};
+use crate::common::{CRATE_NAME, with_tempdir, write_sync};
 
 fn prepare(basedir: &Path, filename: &str, input: &str, expect: Option<&str>) {
     let input_path = basedir.join(&format!("{}.in", filename));

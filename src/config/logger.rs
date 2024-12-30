@@ -10,9 +10,7 @@ use crate::config::metadata::CRATE_NAME;
 ///
 /// # 戻り値
 ///
-/// なし 
+/// なし
 pub fn init(level: LevelFilter) {
-    colog::default_builder()
-        .filter_module(CRATE_NAME, level)
-        .init();
+    env_logger::init();
 }

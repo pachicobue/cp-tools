@@ -7,6 +7,6 @@ components = [
   "rust-src",
   "rust-docs",
   "clippy",
-  "rust-analysis",
+  "rust-analyzer",
 ]
 profile = "default"

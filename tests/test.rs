@@ -6,7 +6,7 @@ use std::{
 
 use assert_cmd::prelude::*;
 
-use crate::common::{CRATE_NAME, with_tempdir, write_sync};
+use crate::common::{with_tempdir, write_sync, CRATE_NAME};
 
 fn prepare(basedir: &Path, filename: &str, input: &str, expect: Option<&str>) {
     let input_path = basedir.join(&format!("{}.in", filename));

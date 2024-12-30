@@ -3,7 +3,7 @@
 #
 # - name
 #   言語名（`enum Language` のフィールド名に対応）
-# - exts
+# - extensions
 #   ソースファイルの拡張子候補（`guess_language` に使用）
 # - [[build]]
 #   ビルド時コマンド定義（${src_path}から${bin_path}を生成する）
@@ -41,7 +41,7 @@
 
 [[language]]
 name = 'cpp'
-exts = ['cpp']
+extensions = ['cpp']
 [[language.build]]
 command = 'clang++'
 args = [

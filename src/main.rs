@@ -29,7 +29,7 @@ fn main() {
     }
 }
 
-/// アプリケーションの内部処理 
+/// アプリケーションの内部処理
 fn inner() -> Result<(), ApplicationError> {
     let args = Cli::parse();
     config::init(args.verbose.log_level_filter())?;

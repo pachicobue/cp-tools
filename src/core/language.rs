@@ -89,6 +89,7 @@ struct ExpandConfig {
 /// 言語設定の初期化に成功した場合は`Ok(())`、失敗した場合は`LanguageConfigurationError`を返す
 pub(crate) fn init() -> Result<(), LanguageConfigurationError> {
     log::debug!("Loading language.toml ...");
+    log::debug!("{}", read_sync(toml_path()).unwrap().to_string());
     let toml: LanguageToml = toml::from_str(&read_sync(toml_path()).unwrap())
         .map_err(|e| LanguageConfigurationError::TomlParseError(e, toml_path()))?;
     log::trace!("{:#?}", toml);

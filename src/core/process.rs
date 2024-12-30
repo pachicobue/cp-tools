@@ -22,7 +22,7 @@ impl CommandResult {
     ///
     /// # 戻り値
     ///
-    /// コマンドの実行結果の詳細 
+    /// コマンドの実行結果の詳細
     pub(crate) fn get_detail(&self) -> &CommandResultDetail {
         match self {
             Self::Success(detail) => detail,
@@ -196,7 +196,7 @@ async fn command_timeout(
 ///
 /// # 戻り値
 ///
-/// コマンドの実行結果 
+/// コマンドの実行結果
 pub(crate) fn run_command_simple(expr: CommandExpression) -> CommandResult {
     log::info!("$ {}", expr.to_string());
     let result = run_task(command(

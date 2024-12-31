@@ -4,18 +4,19 @@ Commandline tools for competitive programming.
 
 ## Features
 
-- Build/Run wrapper (w/ language detection)
-- Expand library imports/includes in source file (a.k.a 'Bundle')
-    - ⚠ Now only supports C++. Please specify your own command for other langs.
+- Build wrapper (w/ language detection)
  - Customizable command
-    - Build/Run/Expand command can be specified with `language.toml`
+    - Build/Run/Expand command can be specified with `languages.toml`
 
 ### Future support
 
+- Run wrapper (w/ language detection)
 - Test utilities
     - Test
     - Generate input/output
     - Generate hack case
+- Expand library imports/includes in source file (a.k.a 'Bundle')
+    - ⚠ Only prepared for C++. Please specify your own command for other langs.
 
 ### Limitation
 
@@ -24,12 +25,14 @@ Commandline tools for competitive programming.
 
 ## Installation
 
-`cargo install --path .`
+1. `cd cargo-core`
+  
+2. `cargo install --path .`
 
 ## Usage
 
-Build/Run/Expand commands are determined by `language.toml`.  
-You can place your own `~/.local/share/cpt/language.toml` to overwrite default.
+Build/Run/Expand commands are determined by `languages.toml`.  
+You can place your own `~/.local/share/cpt/languages.toml` or `<project_dir>/.cpt/languages.toml` to overwrite default.
 
 ### Build
 

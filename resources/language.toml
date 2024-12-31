@@ -109,8 +109,4 @@ args = [
 ]
 [[language.expand]]
 command = 'clang-format'
-args = [
-  '${bundled_path}',
-  '--style=file:${tool_workdir}/cpp/.clang-format',
-  '-i',
-]
+args = ['${bundled_path}', '-i']

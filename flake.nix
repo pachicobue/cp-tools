@@ -21,7 +21,6 @@
           inherit system;
           overlays = [ (import rust-overlay) ];
         };
-        inherit (pkgs) lib;
         toolchain = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
       in
       {
@@ -33,6 +32,7 @@
             pkgs.cargo-deny
             pkgs.cargo-license
             pkgs.cargo-rdme
+            pkgs.rust-script
             pkgs.taplo
           ];
         };

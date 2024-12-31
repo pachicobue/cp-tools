@@ -5,41 +5,36 @@ pub mod test;
 
 use clap::Subcommand;
 use strum;
+use thiserror::Error;
 
-use crate::{
-    commands::{
-        build::{build, BuildArgs},
-        completion::{print_completion, CompletionArgs},
-        expand::{expand, ExpandArgs},
-        test::{test, TestArgs},
-    },
-    core::error::CommandError,
+use crate::commands::{
+    build::{build, BuildArgs, BuildCommandError},
+    completion::{print_completion, CompletionArgs},
+    expand::{expand, ExpandArgs, ExpandCommandError},
+    test::{test, TestArgs, TestCommandError},
 };
 
-/// コマンドを格納する列挙体
 #[derive(Subcommand, Debug, strum::Display)]
 pub(crate) enum Command {
     #[command(visible_alias = "e")]
-    /// ソースコード中の#includeを展開する
     Expand(ExpandArgs),
     #[command(visible_alias = "b")]
-    /// ソースコードをビルドする
     Build(BuildArgs),
     #[command(visible_alias = "t")]
-    /// ソースコードをテストする(Batch)
     Test(TestArgs),
-    /// シェル補完関数を生成する
     Completion(CompletionArgs),
 }
 
-/// コマンドを実行する関数
-///
-/// # 引数
-///
-/// * `command` - 実行するコマンド
-///
-/// # 戻り値
-/// コマンドの実行結果
+#[derive(Error, Debug)]
+pub(crate) enum CommandError {
+    #[error("Test command failed")]
+    TestFailed(#[from] TestCommandError),
+    #[error("Build command failed")]
+    BuildFailed(#[from] BuildCommandError),
+    #[error("Expand command failed")]
+    ExpandFailed(#[from] ExpandCommandError),
+}
+
 pub(crate) fn exec_command(command: &Command) -> Result<(), CommandError> {
     match command {
         Command::Expand(args) => {

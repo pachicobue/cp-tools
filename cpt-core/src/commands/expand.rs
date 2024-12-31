@@ -1,16 +1,15 @@
 use std::path::{Path, PathBuf};
 
 use clap::{Args, ValueHint};
+use thiserror::Error;
 
 use crate::{
-    config::dirs::project_workdir,
+    config::{ensure_expandable, expand_command, guess_lang, ConfigError},
     core::{
-        error::{ExpandArgumentError, ExpandCommandError},
-        fs::{filename, with_tempdir, write_sync},
-        language::{ensure_expandable, expand_command, guess_lang},
+        fs::{filename, with_tempdir},
         process::run_command_simple,
     },
-    styled,
+    dir, styled,
 };
 
 #[derive(Args, Debug)]
@@ -22,6 +21,29 @@ pub(crate) struct ExpandArgs {
     /// 出力先ファイル
     #[arg(short = 'o', long, value_hint = ValueHint::FilePath)]
     output: Option<PathBuf>,
+}
+
+/// 展開コマンドエラーを表す列挙型
+#[derive(Error, Debug)]
+pub(crate) enum ExpandCommandError {
+    #[error("Invalid argument")]
+    InvalidArgument(#[from] ExpandArgumentError),
+    #[error("Expand command failed")]
+    ExpandCommandError,
+}
+
+/// 展開引数エラーを表す列挙型
+#[derive(Error, Debug)]
+pub(crate) enum ExpandArgumentError {
+    /// ソースファイルが見つからないエラー
+    #[error("Src file `{0}` is not found.")]
+    SourcefileIsNotFound(PathBuf),
+    /// ソースパスがファイルでないエラー
+    #[error("Src path `{0}` is not a file.")]
+    SourcefileIsNotFile(PathBuf),
+    /// 言語仕様エラー
+    #[error(transparent)]
+    ExpandCommandNotFound(#[from] ConfigError),
 }
 
 /// #includeの展開処理を行う
@@ -46,12 +68,10 @@ pub(crate) fn expand(args: &ExpandArgs) -> Result<(), ExpandCommandError> {
 
     let lang = guess_lang(&src).unwrap();
     with_tempdir(|tempdir| {
-        let exprs = expand_command(lang.clone(), &args.file, &dst, tempdir.path());
-        for expr in exprs {
-            let result = run_command_simple(expr);
-            if !result.is_success() {
-                return Err(ExpandCommandError::ExpandCommandError);
-            }
+        let expr = expand_command(lang.clone(), &args.file, &dst, tempdir.path());
+        let result = run_command_simple(expr);
+        if !result.is_success() {
+            return Err(ExpandCommandError::ExpandCommandError);
         }
         Ok(())
     })?;
@@ -78,6 +98,6 @@ fn check_args(args: &ExpandArgs) -> Result<(), ExpandArgumentError> {
 }
 
 fn default_output_path(filepath: &Path) -> PathBuf {
-    let basedir = project_workdir(filepath.parent().unwrap());
+    let basedir = dir::workspace_dir();
     basedir.join(filename(filepath) + "_bundled.cpp")
 }

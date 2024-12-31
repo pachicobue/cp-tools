@@ -1,8 +1,4 @@
-use std::{
-    ffi::{OsStr, OsString},
-    process::Stdio,
-    time::Duration,
-};
+use std::{process::Stdio, time::Duration};
 
 use itertools::Itertools;
 use strum;
@@ -43,8 +39,8 @@ pub(crate) struct CommandResultDetail {
 /// コマンドの実行設定を格納する構造体
 #[derive(Debug, Clone)]
 pub(crate) struct CommandExpression {
-    pub program: OsString,
-    pub args: Vec<OsString>,
+    pub program: String,
+    pub args: Vec<String>,
 }
 impl CommandExpression {
     /// コマンドの実行設定を生成する関数
@@ -58,15 +54,15 @@ impl CommandExpression {
     ///
     pub(crate) fn new<S1, I1, S2>(program: S1, args: I1) -> Self
     where
-        S1: AsRef<OsStr>,
+        S1: AsRef<str>,
         I1: IntoIterator<Item = S2>,
-        S2: AsRef<OsStr>,
+        S2: AsRef<str>,
     {
         CommandExpression {
-            program: program.as_ref().to_os_string(),
+            program: program.as_ref().to_string(),
             args: args
                 .into_iter()
-                .map(|arg| arg.as_ref().to_os_string())
+                .map(|arg| arg.as_ref().to_string())
                 .collect_vec(),
         }
     }
@@ -78,8 +74,8 @@ impl CommandExpression {
     pub(crate) fn to_string(&self) -> String {
         format!(
             "{} {}",
-            self.program.to_string_lossy(),
-            self.args.iter().map(|arg| arg.to_string_lossy()).join(" ")
+            self.program.to_string(),
+            self.args.iter().map(|arg| arg.to_string()).join(" ")
         )
     }
 }

@@ -1,11 +1,11 @@
-use std::{ffi::OsString, path::PathBuf, process::Stdio};
+use std::{path::PathBuf, process::Stdio};
 
 use clap::{Args, ValueHint};
 use itertools::Itertools;
+use thiserror::Error;
 
 use crate::{
     core::{
-        error::{TestArgumentError, TestCommandError},
         fs::{read_async, with_tempdir},
         judge::{collect_judge_paths, JudgePaths, Verdict},
         process::{command_task, CommandExpression, CommandIoRedirection, CommandResult},
@@ -30,14 +30,22 @@ pub(crate) struct TestArgs {
     timelimit: Option<f32>,
 }
 
-/// テストコマンドを実行する関数
-///
-/// # 引数
-///
-/// * `args` - テストコマンドの引数
-///
-/// # 戻り値
-///
+#[derive(Error, Debug)]
+pub(crate) enum TestCommandError {
+    #[error("Invalid argument")]
+    InvalidArgument(#[from] ArgumentError),
+    #[error("Testcase not found.")]
+    CaseNotFound,
+}
+
+#[derive(Error, Debug)]
+pub(crate) enum ArgumentError {
+    #[error("Testcase directory `{0}` is not found.")]
+    CasedirNotFound(PathBuf),
+    #[error("Testcase path `{0}` is not a directory.")]
+    CasedirNotDir(PathBuf),
+}
+
 pub(crate) fn test(args: &TestArgs) -> Result<Vec<Verdict>, TestCommandError> {
     log::info!("{}\n{:?}", styled!("Batch Test").bold().green(), args);
     check_args(args)?;
@@ -46,7 +54,7 @@ pub(crate) fn test(args: &TestArgs) -> Result<Vec<Verdict>, TestCommandError> {
         let temppath = tempdir.path();
         let judge_paths = collect_judge_paths(&args.directory, temppath);
         if judge_paths.is_empty() {
-            return Err(TestCommandError::TestCaseNotFound);
+            return Err(TestCommandError::CaseNotFound);
         }
         let check_tasks = judge_paths
             .into_iter()
@@ -70,7 +78,7 @@ pub(crate) fn test(args: &TestArgs) -> Result<Vec<Verdict>, TestCommandError> {
 /// 判定結果
 async fn judge_single(command: String, judge_path: JudgePaths, tl: Option<f32>) -> Verdict {
     let sol_result = command_task(
-        CommandExpression::new(command, Vec::<OsString>::new()),
+        CommandExpression::new(command, Vec::<String>::new()),
         CommandIoRedirection {
             stdin: Stdio::piped(),
             stdout: Stdio::piped(),
@@ -98,22 +106,13 @@ async fn judge_single(command: String, judge_path: JudgePaths, tl: Option<f32>) 
     }
 }
 
-/// テストコマンドの引数をチェックする関数
-///
-/// # 引数
-///
-/// * `args` - テストコマンドの引数
-///
-/// # 戻り値
-///
-/// 引数が有効な場合は`Ok(())`、無効な場合は`TestArgumentError`を返す
-fn check_args(args: &TestArgs) -> Result<(), TestArgumentError> {
+fn check_args(args: &TestArgs) -> Result<(), ArgumentError> {
     let dir = args.directory.clone();
     if !dir.exists() {
-        return Err(TestArgumentError::CasedirIsNotFound(dir));
+        return Err(ArgumentError::CasedirNotFound(dir));
     }
     if !dir.is_dir() {
-        return Err(TestArgumentError::CasedirIsNotDirectory(dir));
+        return Err(ArgumentError::CasedirNotDir(dir));
     }
     Ok(())
 }

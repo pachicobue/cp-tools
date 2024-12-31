@@ -1,0 +1,15 @@
+[package]
+name = "cpt-extras"
+description = "CPT extra tools"
+include = ["src/**/*", "README.md"]
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+categories.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "cpp_bundle"
+path = "src/cpp_bundle.rs"

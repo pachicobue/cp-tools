@@ -1,10 +1,25 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use tempfile::{self, TempDir};
+use thiserror::Error;
 use tokio;
 
-use super::error::FilesystemError;
-use crate::config::metadata::CRATE_NAME;
+/// ファイルシステムエラーを表す列挙型
+#[derive(Error, Debug)]
+pub(crate) enum FilesystemError {
+    /// ファイルの読み取り失敗エラー
+    #[error("Failed to read from file `{0}`.")]
+    ReadFileError(PathBuf),
+    /// ファイルの書き込み失敗エラー
+    #[error("Failed to write to file `{0}`.")]
+    WriteFileError(PathBuf),
+    /// ディレクトリの作成失敗エラー
+    #[error("Failed to create directory `{0}`.")]
+    CreateDirError(PathBuf),
+    /// ファイルのオープン失敗エラー
+    #[error("Failed to open file `{0}`.")]
+    OpenFileError(PathBuf),
+}
 
 /// 同期的にファイルを読み込む関数
 ///
@@ -171,23 +186,12 @@ pub(crate) fn filename(filepath: impl AsRef<Path>) -> String {
         .to_string()
 }
 
-/// 一時ディレクトリを使用して関数を実行する関数
-///
-/// # 引数
-///
-/// * `func` - 一時ディレクトリを引数に取る関数
-///
-/// # 戻り値
-///
-/// 関数の戻り値
+/// Run function with tempdir
 pub(crate) fn with_tempdir<F, R>(func: F) -> R
 where
     F: FnOnce(&TempDir) -> R,
 {
-    let tempdir = tempfile::Builder::new()
-        .prefix(&format!("{}-", CRATE_NAME))
-        .tempdir()
-        .unwrap();
+    let tempdir = tempfile::Builder::new().prefix("cpt-").tempdir().unwrap();
     let result = func(&tempdir);
     tempdir.close().unwrap();
     result

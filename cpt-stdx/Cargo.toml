@@ -11,8 +11,6 @@ categories.workspace = true
 repository.workspace = true
 
 [dependencies]
-dunce = "1.0.5"
-etcetera = "0.8.0"
 itertools.workspace = true
 log.workspace = true
 tempfile.workspace = true

@@ -31,8 +31,6 @@
             pkgs.cargo-bundle-licenses
             pkgs.cargo-deny
             pkgs.cargo-license
-            pkgs.cargo-rdme
-            pkgs.rust-script
             pkgs.taplo
           ];
         };

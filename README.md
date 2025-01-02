@@ -17,7 +17,7 @@ Commandline tools for competitive programming.
 ### Expand library code (a.k.a `Bundle`)
 
 - Expansion command binaries
-    - [] C++
+    - [ ] C++
         - Based on `clang++ -E` command.
 
 ## Ambitious Goals

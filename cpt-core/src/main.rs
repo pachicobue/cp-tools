@@ -1,12 +1,8 @@
 mod commands;
-mod dir;
 mod judge;
-mod lang;
-mod logger;
 
 use clap::Parser;
 use clap_verbosity_flag::{InfoLevel, Verbosity};
-use dir::DirError;
 use itertools::Itertools;
 use thiserror::Error;
 
@@ -24,8 +20,6 @@ pub(crate) struct Cli {
 
 #[derive(Error, Debug)]
 pub(crate) enum ApplicationError {
-    #[error("DirConfigurationError")]
-    DieConfigurationError(#[from] DirError),
     #[error("CommandError")]
     CommandError(#[from] CommandError),
 }
@@ -40,9 +34,9 @@ fn main() {
 
 fn inner() -> Result<(), ApplicationError> {
     let args = Cli::parse();
-    logger::init(args.verbose.log_level_filter());
-    dir::init()?;
-    lang::init();
+    env_logger::Builder::new()
+        .filter_level(args.verbose.log_level_filter())
+        .init();
     exec_command(&args.command)?;
 
     Ok(())

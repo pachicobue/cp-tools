@@ -1,7 +1,7 @@
 mod commands;
-mod config;
-mod core;
 mod dir;
+mod judge;
+mod lang;
 mod logger;
 
 use clap::Parser;
@@ -42,7 +42,7 @@ fn inner() -> Result<(), ApplicationError> {
     let args = Cli::parse();
     logger::init(args.verbose.log_level_filter());
     dir::init()?;
-    config::init();
+    lang::init();
     exec_command(&args.command)?;
 
     Ok(())

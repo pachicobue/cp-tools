@@ -2,8 +2,8 @@ use std::str::from_utf8;
 
 use thiserror::Error;
 
-use crate::core::fs::{self, FilesystemError};
 use crate::dir;
+use crate::utils::fs::{self, FilesystemError};
 
 pub(crate) fn load_tomls() -> Vec<toml::Value> {
     let mut tomls = vec![];
@@ -19,9 +19,9 @@ pub(crate) fn load_tomls() -> Vec<toml::Value> {
 
 #[derive(Error, Debug)]
 enum TomlLoadError {
-    #[error(transparent)]
-    CannotReadFile(#[from] FilesystemError),
-    #[error(transparent)]
+    #[error("Cannot read toml file")]
+    FsError(#[from] FilesystemError),
+    #[error("Failed to parse toml file")]
     ParseFailed(#[from] toml::de::Error),
 }
 

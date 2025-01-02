@@ -3,37 +3,8 @@ use std::collections::BTreeMap;
 use serde::Deserialize;
 use thiserror::Error;
 
-#[derive(Debug, Clone)]
-pub(crate) struct LanguageConfigMap {
-    /// lang.name -> config
-    pub name_to_config: BTreeMap<String, LanguageConfig>,
-    /// lang.ext  -> lang.name
-    pub ext_to_name: BTreeMap<String, String>,
-}
+use crate::lang::{BuildConfig, Config, ConfigMap, ExecutionConfig, ExpandConfig};
 
-#[derive(Debug, Clone)]
-pub(crate) struct LanguageConfig {
-    pub build: Option<BuildConfig>,
-    pub execute: Option<ExecutionConfig>,
-    pub expand: Option<ExpandConfig>,
-}
-#[derive(Debug, Clone)]
-pub(crate) struct BuildConfig {
-    pub command: String,
-    pub args: Vec<String>,
-    pub debug_args: Vec<String>,
-    pub release_args: Vec<String>,
-}
-#[derive(Debug, Clone)]
-pub(crate) struct ExecutionConfig {
-    pub command: String,
-    pub args: Vec<String>,
-}
-#[derive(Debug, Clone)]
-pub(crate) struct ExpandConfig {
-    pub command: String,
-    pub args: Vec<String>,
-}
 #[derive(Debug, Error)]
 enum SyntaxError {
     #[error("Failed to parse toml into language configuration.")]
@@ -42,35 +13,35 @@ enum SyntaxError {
 
 #[derive(Debug, Clone, Default, Deserialize)]
 struct LanguageToml {
-    language: Vec<ConfigRaw>,
+    language: Vec<ConfigToml>,
 }
 #[derive(Debug, Clone, Default, Deserialize)]
-struct ConfigRaw {
+struct ConfigToml {
     name: String,
     extensions: Vec<String>,
-    build: Option<BuildConfigRaw>,
-    execute: Option<ExecuteConfigRaw>,
-    expand: Option<ExpandConfigRaw>,
+    build: Option<BuildConfigToml>,
+    execute: Option<ExecuteConfigToml>,
+    expand: Option<ExpandConfigToml>,
 }
 #[derive(Debug, Clone, Default, Deserialize)]
-struct BuildConfigRaw {
+struct BuildConfigToml {
     command: String,
     args: Vec<String>,
     debug_args: Option<Vec<String>>,
     release_args: Option<Vec<String>>,
 }
 #[derive(Debug, Clone, Default, Deserialize)]
-struct ExecuteConfigRaw {
+struct ExecuteConfigToml {
     command: String,
     args: Vec<String>,
 }
 #[derive(Debug, Clone, Default, Deserialize)]
-struct ExpandConfigRaw {
+struct ExpandConfigToml {
     command: String,
     args: Vec<String>,
 }
 
-pub(crate) fn language_config_map(tomls: Vec<toml::Value>) -> LanguageConfigMap {
+pub(crate) fn merge_parse_tomls(tomls: Vec<toml::Value>) -> ConfigMap {
     let raw = tomls
         .iter()
         .filter_map(|toml| parse_toml(toml.to_owned()).ok())
@@ -78,17 +49,17 @@ pub(crate) fn language_config_map(tomls: Vec<toml::Value>) -> LanguageConfigMap 
     convert(raw)
 }
 
-fn convert_single(raw_config: ConfigRaw) -> LanguageConfig {
-    let ConfigRaw {
+fn convert_single(raw_config: ConfigToml) -> Config {
+    let ConfigToml {
         name: _,
         extensions: _,
         build,
         execute,
         expand,
     } = raw_config;
-    LanguageConfig {
+    Config {
         build: build.map(
-            |BuildConfigRaw {
+            |BuildConfigToml {
                  command,
                  args,
                  debug_args,
@@ -101,13 +72,13 @@ fn convert_single(raw_config: ConfigRaw) -> LanguageConfig {
             },
         ),
         execute: execute
-            .map(|ExecuteConfigRaw { command, args }| ExecutionConfig { command, args }),
-        expand: expand.map(|ExpandConfigRaw { command, args }| ExpandConfig { command, args }),
+            .map(|ExecuteConfigToml { command, args }| ExecutionConfig { command, args }),
+        expand: expand.map(|ExpandConfigToml { command, args }| ExpandConfig { command, args }),
     }
 }
 
-fn convert(raw_configs: LanguageToml) -> LanguageConfigMap {
-    let mut name_to_config = BTreeMap::<String, LanguageConfig>::new();
+fn convert(raw_configs: LanguageToml) -> ConfigMap {
+    let mut name_to_config = BTreeMap::<String, Config>::new();
     let mut ext_to_name = BTreeMap::<String, String>::new();
     raw_configs.language.into_iter().for_each(|raw_config| {
         let name = raw_config.to_owned().name;
@@ -117,7 +88,7 @@ fn convert(raw_configs: LanguageToml) -> LanguageConfigMap {
             ext_to_name.insert(ext, name.to_owned());
         }
     });
-    LanguageConfigMap {
+    ConfigMap {
         name_to_config,
         ext_to_name,
     }

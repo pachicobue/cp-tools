@@ -1,60 +1,52 @@
-use std::{path::PathBuf, process::Stdio};
+use std::path::PathBuf;
+use std::process::Stdio;
 
 use clap::{Args, ValueHint};
 use itertools::Itertools;
 use thiserror::Error;
 
-use crate::{
-    core::{
-        fs::{read_async, with_tempdir},
-        judge::{collect_judge_paths, JudgePaths, Verdict},
-        process::{command_task, CommandExpression, CommandIoRedirection, CommandResult},
-        task::run_tasks,
-    },
-    styled,
-};
+use crate::judge::{collect_judge_paths, JudgePaths, Verdict};
 
-/// テストコマンドの引数を格納する構造体
 #[derive(Args, Debug)]
 pub(crate) struct TestArgs {
-    /// 実行コマンド
-    #[arg(short = 'c')]
-    command: String,
-
-    /// テストディレクトリ
+    #[arg(required = true, value_hint(ValueHint::FilePath))]
+    file: PathBuf,
+    #[arg(short = 'o', long, value_hint(ValueHint::FilePath))]
+    output: Option<PathBuf>,
+    #[arg(long, default_value_t = false)]
+    release: bool,
     #[arg(short = 'd', visible_alias = "dir", value_hint(ValueHint::FilePath))]
-    directory: PathBuf,
-
-    /// TL(秒単位)
+    directory: Option<PathBuf>,
     #[arg(short = 't', visible_alias = "tl")]
     timelimit: Option<f32>,
 }
 
 #[derive(Error, Debug)]
 pub(crate) enum TestCommandError {
-    #[error("Invalid argument")]
-    InvalidArgument(#[from] ArgumentError),
-    #[error("Testcase not found.")]
-    CaseNotFound,
-}
-
-#[derive(Error, Debug)]
-pub(crate) enum ArgumentError {
     #[error("Testcase directory `{0}` is not found.")]
     CasedirNotFound(PathBuf),
     #[error("Testcase path `{0}` is not a directory.")]
     CasedirNotDir(PathBuf),
+    #[error("Testcase not found in `{0}`.")]
+    CaseNotFound(PathBuf),
 }
 
+#[derive(Error, Debug)]
+pub(crate) enum ArgumentError {}
+
 pub(crate) fn test(args: &TestArgs) -> Result<Vec<Verdict>, TestCommandError> {
-    log::info!("{}\n{:?}", styled!("Batch Test").bold().green(), args);
+    use cpt_stdx::path::PathInfo;
+    use cpt_stdx::process::run_command_simple;
+    use cpt_stdx::tempfile::with_tempdir;
+
+    log::info!("Batch Test\n{:?}", args);
     check_args(args)?;
 
     let verdicts = with_tempdir(|tempdir| -> Result<Vec<Verdict>, TestCommandError> {
         let temppath = tempdir.path();
         let judge_paths = collect_judge_paths(&args.directory, temppath);
         if judge_paths.is_empty() {
-            return Err(TestCommandError::CaseNotFound);
+            return Err(TestCommandError::CaseNotFound(args.directory.to_owned()));
         }
         let check_tasks = judge_paths
             .into_iter()
@@ -65,19 +57,8 @@ pub(crate) fn test(args: &TestArgs) -> Result<Vec<Verdict>, TestCommandError> {
     Ok(verdicts)
 }
 
-/// 単一のテストケースを判定する関数
-///
-/// # 引数
-///
-/// * `command` - 実行コマンド
-/// * `judge_path` - 判定に使用するパス
-/// * `tl` - タイムリミット
-///
-/// # 戻り値
-///
-/// 判定結果
 async fn judge_single(command: String, judge_path: JudgePaths, tl: Option<f32>) -> Verdict {
-    let sol_result = command_task(
+    let CommandResult { summary, detail } = command_task(
         CommandExpression::new(command, Vec::<String>::new()),
         CommandIoRedirection {
             stdin: Stdio::piped(),
@@ -87,8 +68,8 @@ async fn judge_single(command: String, judge_path: JudgePaths, tl: Option<f32>) 
         tl,
     )
     .await;
-    match sol_result {
-        CommandResult::Success(detail) => {
+    match summary {
+        CommandResultSummary::Success => {
             if let Some(expect_path) = judge_path.expect {
                 let actual = detail.stdout;
                 let expect = read_async(&expect_path).await.unwrap();
@@ -101,8 +82,8 @@ async fn judge_single(command: String, judge_path: JudgePaths, tl: Option<f32>) 
                 Verdict::Ac
             }
         }
-        CommandResult::Aborted(_) => Verdict::Re,
-        CommandResult::Timeout(_) => Verdict::Tle,
+        CommandResultSummary::Aborted => Verdict::Re,
+        CommandResultSummary::Timeout => Verdict::Tle,
     }
 }
 

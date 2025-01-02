@@ -2,26 +2,40 @@
 
 Commandline tools for competitive programming.
 
-## Features
+## Goals
 
-- Build wrapper (w/ language detection)
- - Customizable command
-    - Build/Run/Expand command can be specified with `languages.toml`
+### Test helper
 
-### Future support
+- Test samples
+    - Batch
+    - Special judge
+    - Reactive
+    - Run twice
+- Generate testcases
+    - Hack-case generation (WA/TLE/RE)
 
-- Run wrapper (w/ language detection)
-- Test utilities
-    - Test
-    - Generate input/output
-    - Generate hack case
-- Expand library imports/includes in source file (a.k.a 'Bundle')
-    - ⚠ Only prepared for C++. Please specify your own command for other langs.
+### Expand library code (a.k.a `Bundle`)
+
+- Expansion command binaries
+    - [] C++
+        - Based on `clang++ -E` command.
+
+## Ambitious Goals
+
+- Network commands
+    - Download samples
+    - Submission
+
+## Not Goals
+
+- Language specific command wrappers (such as building/executing).
+    - Because these commands can be easily wrapped. For example, shell-aliases, Makefile,...
+    - `Expand library code` support is the exception of philosophy.
+        - This is neccesary for me, and can be complicated to wrap. 
 
 ### Limitation
 
 - Only tested for linux
-- Network command such as 'Download samples' or 'Submit file' not supported.
 
 ## Installation
 
@@ -31,24 +45,12 @@ Commandline tools for competitive programming.
 
 ## Usage
 
-Build/Run/Expand commands are determined by `languages.toml`.  
-You can place your own `~/.local/share/cpt/languages.toml` or `<project_dir>/.cpt/languages.toml` to overwrite default.
-
-### Build
-
-- `cpt build <src_file> [-o dst_file] [--release]`
-
-### Run
-
-- `cpt run <src_file> [-o dst_file] [--release]`
-
-### Expand
-
-- `cpt expand <src_file> [-o dst_file]`
 
 ## Credits
 
 See [THIRD-PARTY-LICENSES.toml](THIRD-PARTY-LICENSES.toml). 
+
+This tool is heavily inspired by [oj](https://github.com/online-judge-tools/oj) (Just a reinventing of the wheel...).
 
 ## License
 

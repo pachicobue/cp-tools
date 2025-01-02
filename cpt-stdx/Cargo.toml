@@ -1,6 +1,6 @@
 [package]
-name = "cpt-extras"
-description = "CPT extra tools"
+name = "cpt-stdx"
+description = "CPT common library"
 include = ["src/**/*", "README.md"]
 version.workspace = true
 authors.workspace = true
@@ -10,10 +10,11 @@ rust-version.workspace = true
 categories.workspace = true
 repository.workspace = true
 
-[[bin]]
-name = "cpp_bundle"
-path = "cpp_bundle.rs"
-
 [dependencies]
-clap = { version = "4.5.23", features = ["derive"] }
-regex = "1.11.1"
+dunce = "1.0.5"
+etcetera = "0.8.0"
+itertools.workspace = true
+log.workspace = true
+tempfile.workspace = true
+thiserror.workspace = true
+tokio.workspace = true

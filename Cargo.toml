@@ -1,7 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["cpt-core", "cpt-extras"]
-default-members = ["cpt-core"]
+members = ["cpt-core", "cpt-extras", "cpt-stdx"]
 
 [workspace.package]
 version = "0.1.0"
@@ -11,3 +10,14 @@ categories = ["command-line-utilities"]
 repository = "https://github.com/pachicobue/cp-tools"
 license = "MIT OR Apache-2.0"
 rust-version = "1.83.0"
+
+[workspace.dependencies]
+thiserror = "2.0.9"
+clap = { version = "4.5.23", features = ["derive"] }
+clap-verbosity-flag = "2.2.3"
+log = "0.4.22"
+tempfile = "3.10.1"
+tokio = { version = "1.39.2", features = ["full"] }
+regex = "1.10.4"
+itertools = "0.14.0"
+ignore = "0.8.0"

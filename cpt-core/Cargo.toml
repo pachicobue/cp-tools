@@ -11,26 +11,21 @@ categories.workspace = true
 repository.workspace = true
 
 [dependencies]
-clap = { version = "4.5.4", features = ["derive"] }
-clap-verbosity-flag = "2.2.1"
-clap_complete = "4.5.2"
+cpt-stdx.path = "../cpt-stdx"
+clap.workspace = true
+clap-verbosity-flag.workspace = true
 console = "0.15.8"
-dialoguer = "0.11.0"
 env_logger = "0.11.6"
 etcetera = "0.8.0"
-indoc = "2.0.5"
-itertools = "0.13.0"
-log = "0.4.22"
-num_cpus = "1.16.0"
-regex = "1.10.4"
+itertools.workspace = true
+log.workspace = true
+regex.workspace = true
 serde = { version = "1.0.202", features = ["derive"] }
 serde_json = "1.0.117"
-strum = { version = "0.26.3", features = ["derive"] }
-tempfile = "3.10.1"
-thiserror = "1.0.63"
-tokio = { version = "1.39.2", features = ["full"] }
+thiserror.workspace = true
+tempfile.workspace = true
+tokio.workspace = true
 toml = "0.8.19"
-walkdir = "2.5.0"
 
 [dev-dependencies]
 assert_cmd = "2.0.14"

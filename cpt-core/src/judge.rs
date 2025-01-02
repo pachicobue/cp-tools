@@ -1,7 +1,5 @@
-use std::{
-    fmt,
-    path::{Path, PathBuf},
-};
+use std::fmt;
+use std::path::{Path, PathBuf};
 
 use walkdir::WalkDir;
 
@@ -11,12 +9,12 @@ const OUTPUT_EXT: &str = "out";
 /// 判定結果を表す列挙型
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum Verdict {
-    Ac,  // 正解
-    Wa,  // 不正解
-    Re,  // 実行時エラー
-    Tle, // 時間超過
-    Ce,  // コンパイルエラー
-    Ie,  // 内部エラー
+    Ac,
+    Wa,
+    Re,
+    Tle,
+    Ce,
+    Ie,
 }
 
 impl fmt::Display for Verdict {

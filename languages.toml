@@ -13,11 +13,6 @@
 #   -  [debug_args]
 #   -  [release_args]
 # 
-# - [execute] 
-#   Execute command (input: ${bin_path})
-#   - *[command]
-#   - *[args]
-# 
 # - [bundle]
 #   Bundle command (input: ${src_path}, output: ${bundled_path})
 #   - *[command]
@@ -49,7 +44,6 @@
 #   `/home/sho/.local/share/cpt/`
 #
 #--------------------------------------------------------------------------------
-
 [[language]]
 name = 'cpp'
 extensions = ['cpp']

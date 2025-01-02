@@ -1,91 +1,75 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use clap::{Args, ValueHint};
 use thiserror::Error;
 
-use crate::{
-    config::{build_command, ensure_buildable, guess_lang, ConfigError},
-    core::{
-        fs::{filename, with_tempdir},
-        process::run_command_simple,
-    },
-    dir, styled,
-};
+use cpt_stdx::path::PathInfo;
+
+use crate::lang::LangError;
 
 #[derive(Args, Debug)]
 pub(crate) struct BuildArgs {
     #[arg(required = true, value_hint(ValueHint::FilePath))]
-    pub(crate) file: PathBuf,
+    pub file: PathBuf,
     #[arg(short = 'o', long, value_hint(ValueHint::FilePath))]
-    pub(crate) output: Option<PathBuf>,
+    pub output: Option<PathBuf>,
     #[arg(long, default_value_t = false)]
-    pub(crate) release: bool,
+    pub release: bool,
 }
 
 #[derive(Error, Debug)]
 pub(crate) enum BuildCommandError {
-    #[error("Invalid argument")]
-    InvalidArgument(#[from] ArgumentError),
-    #[error("Build command failed")]
-    BuildCommandError,
-}
-
-#[derive(Error, Debug)]
-pub(crate) enum ArgumentError {
     #[error("Src file `{0}` is not found.")]
     SrcfileNotFound(PathBuf),
     #[error("Src path `{0}` is not a file.")]
     SrcfileNotFile(PathBuf),
-    #[error("Invalid language")]
-    InvalidLanguage(#[from] ConfigError),
+    #[error("Language specification error")]
+    InvalidLanguage(#[from] LangError),
+    #[error("Build command process failed")]
+    ProcessFailed,
 }
 
 pub(crate) fn build(args: &BuildArgs) -> Result<(), BuildCommandError> {
-    log::info!("{}\n{:?}", styled!("Build program").bold().green(), args);
+    use cpt_stdx::process::run_command_simple;
+    use cpt_stdx::tempfile::with_tempdir;
 
-    check_args(args)?;
-    let output = args
+    use crate::lang::{build_command, guess_lang};
+
+    log::info!("Build program\n{:?}", args);
+    let file_pathinfo = PathInfo::new(&args.file);
+    if !file_pathinfo.exists {
+        return Err(BuildCommandError::SrcfileNotFound(args.file.to_owned()))?;
+    }
+    if !file_pathinfo.is_file {
+        return Err(BuildCommandError::SrcfileNotFile(args.file.to_owned()))?;
+    }
+
+    let src = args.file.as_ref();
+    let dst = args
         .output
         .to_owned()
-        .unwrap_or(default_output_path(&args.file));
-    let lang = guess_lang(&args.file).unwrap();
+        .unwrap_or(default_output_path(&file_pathinfo));
+
+    let lang = guess_lang(&file_pathinfo.extension).map_err(BuildCommandError::InvalidLanguage)?;
     with_tempdir(|tempdir| {
-        let expr = build_command(
-            lang.clone(),
-            &args.file,
-            &output,
-            args.release,
-            tempdir.path(),
-        );
+        let expr = build_command(lang.clone(), src, &dst, args.release, tempdir.path())
+            .map_err(BuildCommandError::InvalidLanguage)?;
         let result = run_command_simple(expr);
         if !result.is_success() {
-            return Err(BuildCommandError::BuildCommandError);
+            return Err(BuildCommandError::ProcessFailed);
         }
         Ok(())
     })?;
 
     log::info!(
-        "{}\nInput : {}\nOutput: {}",
-        styled!("Build completed").bold().green(),
-        args.file.display(),
-        output.display()
+        "Build completed\nInput : {}\nOutput: {}",
+        src.display(),
+        dst.display()
     );
     Ok(())
 }
 
-fn check_args(args: &BuildArgs) -> Result<(), ArgumentError> {
-    let src_file = args.file.clone();
-    if !src_file.exists() {
-        return Err(ArgumentError::SrcfileNotFound(src_file));
-    }
-    if !src_file.is_file() {
-        return Err(ArgumentError::SrcfileNotFile(src_file));
-    }
-    ensure_buildable(&args.file)?;
-    Ok(())
-}
-
-fn default_output_path(filepath: &Path) -> PathBuf {
-    let basedir = dir::workspace_dir();
-    basedir.join(filename(filepath))
+fn default_output_path(pathinfo: &PathInfo) -> PathBuf {
+    use crate::dir::workspace_dir;
+    workspace_dir().join(pathinfo.filestem.to_owned() + "_exe")
 }

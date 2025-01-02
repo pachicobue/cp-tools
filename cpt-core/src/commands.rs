@@ -1,20 +1,17 @@
 pub mod build;
-pub mod completion;
 pub mod expand;
 pub mod test;
 
 use clap::Subcommand;
-use strum;
 use thiserror::Error;
 
 use crate::commands::{
     build::{build, BuildArgs, BuildCommandError},
-    completion::{print_completion, CompletionArgs},
     expand::{expand, ExpandArgs, ExpandCommandError},
     test::{test, TestArgs, TestCommandError},
 };
 
-#[derive(Subcommand, Debug, strum::Display)]
+#[derive(Subcommand, Debug)]
 pub(crate) enum Command {
     #[command(visible_alias = "e")]
     Expand(ExpandArgs),
@@ -22,7 +19,6 @@ pub(crate) enum Command {
     Build(BuildArgs),
     #[command(visible_alias = "t")]
     Test(TestArgs),
-    Completion(CompletionArgs),
 }
 
 #[derive(Error, Debug)]
@@ -45,9 +41,6 @@ pub(crate) fn exec_command(command: &Command) -> Result<(), CommandError> {
         }
         Command::Test(args) => {
             test(&args)?;
-        }
-        Command::Completion(args) => {
-            print_completion(args.shell);
         }
     }
     Ok(())

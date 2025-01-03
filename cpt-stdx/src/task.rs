@@ -5,8 +5,8 @@ use tokio::{self, task::JoinError};
 
 #[derive(Debug, Error)]
 pub enum TaskError {
-    #[error("Failed to execute spawned task")]
-    FailedToExecute(#[from] JoinError),
+    #[error("Could not execute spawned task")]
+    ExecFailed(JoinError),
 }
 
 pub fn run_task<T: Clone + Debug + Send + 'static, F: Future<Output = T> + Send + 'static>(
@@ -31,5 +31,5 @@ pub fn run_tasks<T: Clone + Debug + Send + 'static, F: Future<Output = T> + Send
             }
             results
         }))
-        .map_err(TaskError::FailedToExecute)
+        .map_err(TaskError::ExecFailed)
 }

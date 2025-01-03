@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use itertools::Itertools;
 
-use crate::task::{run_task, TaskError};
+use crate::task::TaskError;
 
 #[derive(Debug, Clone)]
 pub struct CommandResult {
@@ -63,6 +63,12 @@ impl CommandExpression {
         }
     }
 }
+impl<T: AsRef<str>> From<T> for CommandExpression {
+    fn from(command_str: T) -> Self {
+        let args = command_str.as_ref().split(' ').collect_vec();
+        Self::new(args.first().unwrap_or(&""), args[1..].to_owned())
+    }
+}
 impl std::fmt::Display for CommandExpression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} {}", self.program, self.args.iter().join(" "))
@@ -75,8 +81,8 @@ pub struct CommandIoRedirection {
     pub stdout: Stdio,
     pub stderr: Stdio,
 }
-impl Default for CommandIoRedirection {
-    fn default() -> Self {
+impl CommandIoRedirection {
+    pub fn piped() -> Self {
         Self {
             stdin: Stdio::piped(),
             stdout: Stdio::piped(),
@@ -162,8 +168,4 @@ async fn command_timeout(
             },
         },
     }
-}
-
-pub fn run_command_simple(expr: CommandExpression) -> CommandResult {
-    run_task(command(expr, CommandIoRedirection::default())).unwrap_or_else(CommandResult::from)
 }

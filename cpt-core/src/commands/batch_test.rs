@@ -1,4 +1,5 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use clap::{Args, ValueHint};
 use itertools::Itertools;
@@ -9,10 +10,10 @@ use cpt_stdx::process::{
 };
 use cpt_stdx::task::TaskError;
 
-use crate::judge::{JudgePaths, Verdict};
+use crate::judge::{Testcase, Verdict};
 
 #[derive(Args, Debug)]
-pub(crate) struct TestArgs {
+pub(crate) struct BatchTestArgs {
     #[arg(required = true, short = 'c')]
     command: String,
     #[arg(short = 'd', visible_alias = "dir", value_hint(ValueHint::FilePath))]
@@ -22,7 +23,7 @@ pub(crate) struct TestArgs {
 }
 
 #[derive(Error, Debug)]
-pub(crate) enum TestCommandError {
+pub(crate) enum BatchTestCommandError {
     #[error("Testcase directory `{0}` is not found.")]
     CasedirNotFound(PathBuf),
     #[error("Testcase path `{0}` is not a directory.")]
@@ -33,50 +34,79 @@ pub(crate) enum TestCommandError {
     TestProcessFailed(#[from] TaskError),
 }
 
-pub(crate) fn test(args: &TestArgs) -> Result<Vec<Verdict>, TestCommandError> {
+#[derive(Debug, Clone)]
+struct JudgeResult {
+    verdict: Verdict,
+    elapsed: Duration,
+}
+
+#[derive(Debug, Clone)]
+struct JudgeFiles {
+    casename: String,
+    input: PathBuf,
+    expect: Option<PathBuf>,
+    actual: PathBuf,
+}
+impl JudgeFiles {
+    fn new(testcase: Testcase, tempdir: impl AsRef<Path>) -> Self {
+        Self {
+            casename: testcase.casename.to_owned(),
+            input: testcase.input,
+            expect: testcase.output,
+            actual: tempdir.as_ref().join(testcase.casename + "_actual.txt"),
+        }
+    }
+}
+
+pub(crate) fn test(args: &BatchTestArgs) -> Result<Vec<Verdict>, BatchTestCommandError> {
     use cpt_stdx::task::run_tasks;
     use cpt_stdx::tempfile::with_tempdir;
 
-    use crate::judge::collect_judge_paths;
+    use crate::judge::collect_cases;
 
     log::info!("Batch Test\n{:?}", args);
 
     let dir = args.directory.to_owned();
     if !dir.exists() {
-        return Err(TestCommandError::CasedirNotFound(dir));
+        return Err(BatchTestCommandError::CasedirNotFound(dir));
     }
     if !dir.is_dir() {
-        return Err(TestCommandError::CasedirNotDir(dir));
+        return Err(BatchTestCommandError::CasedirNotDir(dir));
     }
 
-    with_tempdir(|tempdir| -> Result<Vec<Verdict>, TestCommandError> {
-        let temppath = tempdir.path();
-        let judge_paths = collect_judge_paths(&args.directory, temppath);
-        if judge_paths.is_empty() {
-            return Err(TestCommandError::CaseNotFound(args.directory.to_owned()));
+    with_tempdir(|tempdir| -> Result<Vec<Verdict>, BatchTestCommandError> {
+        let tempdir = tempdir.path();
+        let testcases = collect_cases(&args.directory);
+        if testcases.is_empty() {
+            return Err(BatchTestCommandError::CaseNotFound(
+                args.directory.to_owned(),
+            ));
         }
-        let check_tasks = judge_paths
+
+        let check_tasks = testcases
             .into_iter()
-            .map(|judge_path| judge_single(args.command.clone(), judge_path, args.timelimit))
+            .map(|case| JudgeFiles::new(case, tempdir))
+            .map(|judge_files| judge_single(args.command.to_owned(), judge_files, args.timelimit))
             .collect_vec();
-        run_tasks(check_tasks).map_err(TestCommandError::TestProcessFailed)
+        run_tasks(check_tasks).map_err(BatchTestCommandError::TestProcessFailed)
     })
 }
 
-async fn judge_single(command: String, judge_path: JudgePaths, tl: Option<f32>) -> Verdict {
+async fn judge_single(command: String, judge_files: JudgeFiles, tl: Option<f32>) -> Verdict {
     use cpt_stdx::fs;
     use cpt_stdx::process::command_task;
 
     let CommandResult { summary, detail } = command_task(
-        CommandExpression::new(command, Vec::<String>::new()),
-        CommandIoRedirection::default(),
+        CommandExpression::from(&command),
+        CommandIoRedirection::piped(),
         tl,
     )
     .await;
     match summary {
         CommandResultSummary::Success => {
-            if let Some(expect_path) = judge_path.expect {
+            if let Some(expect_path) = judge_files.expect {
                 let actual = detail.stdout;
+                fs::write(judge_files.actual, actual);
                 if let Ok(expect) = fs::read(&expect_path) {
                     if actual == expect {
                         Verdict::Ac

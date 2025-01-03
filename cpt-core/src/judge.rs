@@ -1,3 +1,5 @@
+pub mod batch_test;
+
 use std::path::{Path, PathBuf};
 
 const INPUT_EXT: &str = "in";
@@ -26,46 +28,37 @@ impl std::fmt::Display for Verdict {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct JudgePaths {
-    pub(crate) input: [PathBuf; 2],
-    pub(crate) expect: Option<PathBuf>,
-    pub(crate) actual: [PathBuf; 2],
+pub(crate) struct Testcase {
+    pub(crate) casename: String,
+    pub(crate) input: PathBuf,
+    pub(crate) output: Option<PathBuf>,
 }
 
-pub(crate) fn collect_judge_paths(dir: &Path, tempdir: &Path) -> Vec<JudgePaths> {
+pub(crate) fn collect_cases(dir: &Path) -> Vec<Testcase> {
     use ignore::WalkBuilder;
 
     use cpt_stdx::path::PathInfo;
 
-    let mut cases: Vec<JudgePaths> = Vec::new();
+    let mut cases: Vec<Testcase> = Vec::new();
     let mut builder = WalkBuilder::new(dir);
     builder.standard_filters(false).max_depth(Some(1));
 
-    for entry in builder.build().filter(|entry| {
-        entry
-            .as_ref()
-            .is_ok_and(|entry| entry.path().extension().unwrap_or_default() == INPUT_EXT)
-    }) {
+    for entry in builder.build().filter(|entry| entry.as_ref().is_ok()) {
         let input_pathinfo = PathInfo::from(entry.unwrap().path());
-        let input = input_pathinfo.path;
-        let output = PathInfo::new(
-            &input_pathinfo.basedir,
-            &input_pathinfo.filestem,
-            OUTPUT_EXT,
-        )
-        .path;
-        let testname = input_pathinfo.filestem;
-        cases.push(JudgePaths {
-            input: [
-                input.clone(),
-                tempdir.join(format!("{}_second.in", testname)),
-            ],
-            expect: if output.exists() { Some(output) } else { None },
-            actual: [
-                tempdir.join(format!("{}_first.actual", testname)),
-                tempdir.join(format!("{}_second.actual", testname)),
-            ],
-        });
+        if input_pathinfo.extension == INPUT_EXT {
+            let input = input_pathinfo.path;
+            let output = PathInfo::new(
+                &input_pathinfo.basedir,
+                &input_pathinfo.filestem,
+                OUTPUT_EXT,
+            )
+            .path;
+            cases.push(Testcase {
+                casename: input_pathinfo.filestem,
+                input,
+                output: output.exists().then_some(output),
+            });
+        }
     }
     cases
 }

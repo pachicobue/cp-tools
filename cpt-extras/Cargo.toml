@@ -10,10 +10,13 @@ rust-version.workspace = true
 categories.workspace = true
 repository.workspace = true
 
-[[bin]]
-name = "cpp_bundle"
-path = "cpp_bundle.rs"
 
 [dependencies]
-clap = { version = "4.5.23", features = ["derive"] }
+cpt-stdx.path = "../cpt-stdx"
+clap.workspace = true
+clap-verbosity-flag.workspace = true
+env_logger = "0.11.6"
+log.workspace = true
 regex = "1.11.1"
+which = "7.0.1"
+thiserror.workspace = true

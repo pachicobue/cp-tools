@@ -106,7 +106,7 @@ async fn judge_single(command: String, judge_files: JudgeFiles, tl: Option<f32>)
         CommandResultSummary::Success => {
             if let Some(expect_path) = judge_files.expect {
                 let actual = detail.stdout;
-                fs::write(judge_files.actual, actual);
+                fs::write(judge_files.actual, actual.to_owned(), false);
                 if let Ok(expect) = fs::read(&expect_path) {
                     if actual == expect {
                         Verdict::Ac

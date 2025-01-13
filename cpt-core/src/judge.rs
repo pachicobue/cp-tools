@@ -1,30 +1,17 @@
-pub mod batch_test;
+pub mod batch;
 
 use std::path::{Path, PathBuf};
 
 const INPUT_EXT: &str = "in";
 const OUTPUT_EXT: &str = "out";
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, strum::Display, strum::EnumCount, strum::EnumIter)]
+#[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 pub(crate) enum Verdict {
     Ac,
     Wa,
     Re,
     Tle,
-    Ie,
-}
-
-impl std::fmt::Display for Verdict {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let str = match self {
-            Verdict::Ac => "AC",
-            Verdict::Wa => "WA",
-            Verdict::Re => "RE",
-            Verdict::Tle => "TLE",
-            Verdict::Ie => "IE",
-        };
-        str.fmt(f)
-    }
 }
 
 #[derive(Debug, Clone)]

@@ -1,4 +1,3 @@
-use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug, Default)]
@@ -49,12 +48,12 @@ impl<T: AsRef<Path>> From<T> for PathInfo {
             path_info.basedir = path.parent().unwrap_or(Path::new("")).into();
             path_info.filestem = path
                 .file_stem()
-                .unwrap_or(OsStr::new(""))
+                .unwrap_or_default()
                 .to_string_lossy()
                 .into();
             path_info.extension = path
                 .extension()
-                .unwrap_or(OsStr::new(""))
+                .unwrap_or_default()
                 .to_string_lossy()
                 .into();
         }

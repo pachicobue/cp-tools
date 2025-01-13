@@ -21,3 +21,4 @@ tokio = { version = "1.39.2", features = ["full"] }
 regex = "1.10.4"
 itertools = "0.14.0"
 ignore = "0.4.23"
+strum = { version = "0.26.3", features = ["derive"] }

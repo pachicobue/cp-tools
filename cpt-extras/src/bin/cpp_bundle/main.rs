@@ -1,15 +1,10 @@
-mod expand;
 mod isystem;
+mod preprocess;
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-use clap::{ArgAction, Parser, ValueHint};
+use clap::Parser;
 use clap_verbosity_flag::{InfoLevel, Verbosity};
-use cpt_stdx::fs::{self, FilesystemError};
-use thiserror::Error;
-
-use cpt_stdx::path::PathInfo;
-use cpt_stdx::trace_error::error_trace;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about=None)]
@@ -17,57 +12,50 @@ use cpt_stdx::trace_error::error_trace;
 struct Cli {
     #[clap(flatten)]
     verbose: Verbosity<InfoLevel>,
-    #[arg(required = true, value_hint(ValueHint::FilePath))]
-    file: PathBuf,
-    #[arg(required = false, short = 'o', long = "output")]
-    output: Option<PathBuf>,
-    #[arg(
-        short = 'I',
-        long = "include_directories",
-        value_hint(ValueHint::FilePath)
-    )]
-    include_directories: Vec<PathBuf>,
-    #[arg(short = 'D', long = "defined_macros")]
-    defined_macros: Vec<String>,
-    #[arg(long = "std")]
-    std: Option<String>,
-    #[arg(long = "with_comment", action=ArgAction::SetTrue)]
+    #[arg(required = true, value_hint(clap::ValueHint::FilePath))]
+    src: PathBuf,
+    #[arg(required = true, short = 'o', long = "output")]
+    dst: PathBuf,
+    #[arg(required = false, short = 'c', long = "with_comment", action = clap::ArgAction::SetTrue)]
     with_comment: bool,
+    #[arg(required = false, trailing_var_arg = true)]
+    cxx_args: Vec<String>,
 }
 
-#[derive(Debug, Error)]
+#[derive(thiserror::Error, Debug)]
 enum Error {
-    #[error("File `{0}` not found")]
+    #[error("File `{0}` is not found.")]
     FileNotFound(PathBuf),
-    #[error("File `{0}` is not file")]
+    #[error("File `{0}` is not file.")]
     FileNotFile(PathBuf),
-    #[error("Both `clang++` and `g++` not found")]
+    #[error("Both `clang++` and `g++` are not found.")]
     CompilerNotFound,
-    #[error("Failed to get system header dependency:\n{0}")]
-    FailedToGetDependency(isystem::Error),
-    #[error("Failed to expand:\n{0}")]
-    FailedToExpand(expand::Error),
-    #[error("Failed to output:\n{0}")]
-    FailedToOutput(FilesystemError),
+    #[error("Could not get isystem dependencies.")]
+    GetDependenciesFailed(#[source] isystem::Error),
+    #[error("Preprocess failed.")]
+    PreprocessFailed(#[source] preprocess::Error),
+    #[error("Cannot output file.")]
+    OutputFailed(#[source] cpt_stdx::fs::Error),
 }
 
 fn main() {
-    let res = main_inner();
-    if res.is_err() {
-        log::error!("{:#?}", res);
-        let msg = error_trace(&res.unwrap_err());
-        log::error!("{}", msg);
+    use cpt_stdx::error::stacktrace;
+    if let Err(e) = main_inner() {
+        log::error!("Error occurred\n{}", stacktrace(e));
     }
 }
 
 fn main_inner() -> Result<(), Error> {
-    let args = Cli::parse();
+    let Cli {
+        verbose,
+        src,
+        dst,
+        with_comment,
+        cxx_args,
+    } = Cli::parse();
     env_logger::Builder::new()
-        .filter_level(args.verbose.log_level_filter())
+        .filter_level(verbose.log_level_filter())
         .init();
-    log::info!("cpp_bundle {:#?}", args);
-    let src = args.file;
-    let dst = args.output.unwrap_or(default_output(&src));
     if !src.exists() {
         return Err(Error::FileNotFound(src.to_owned()));
     }
@@ -75,31 +63,17 @@ fn main_inner() -> Result<(), Error> {
         return Err(Error::FileNotFile(src.to_owned()));
     }
 
+    log::info!("[cpp_bundle] Start");
     let cxx = find_cxx()?;
-    let system_deps = isystem::get_system_header_deps(
-        &cxx,
-        &src,
-        &args.include_directories,
-        &args.defined_macros,
-        &args.std,
-    )
-    .map_err(Error::FailedToGetDependency)?;
+    let system_deps =
+        isystem::get_isys_deps(&cxx, &src, &cxx_args).map_err(Error::GetDependenciesFailed)?;
     log::trace!("System headers: \n {:#?}", system_deps);
-    let expanded = expand::expand(
-        &cxx,
-        &src,
-        &args.include_directories,
-        &args.defined_macros,
-        &args.std,
-        args.with_comment,
-        system_deps,
-    )
-    .map_err(Error::FailedToExpand)?;
+    let expanded = preprocess::expand(&cxx, &src, &cxx_args, with_comment, system_deps)
+        .map_err(Error::PreprocessFailed)?;
     log::trace!("{}", expanded);
 
-    fs::write(dst.to_owned(), expanded, true).map_err(Error::FailedToOutput)?;
-    log::info!("Expanded -> `{}`", dst.display());
-
+    cpt_stdx::fs::write(&dst, expanded, true).map_err(Error::OutputFailed)?;
+    log::info!("[cpp_bundle] End");
     Ok(())
 }
 
@@ -108,14 +82,4 @@ fn find_cxx() -> Result<String, Error> {
         .into_iter()
         .find(|cxx| which::which(cxx).is_ok())
         .ok_or(Error::CompilerNotFound)
-}
-
-fn default_output(file: &Path) -> PathBuf {
-    let pathinfo = PathInfo::from(file);
-    PathInfo::new(
-        pathinfo.basedir,
-        pathinfo.filestem + "_bundle",
-        pathinfo.extension,
-    )
-    .path
 }

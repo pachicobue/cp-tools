@@ -1,27 +1,25 @@
-pub mod batch_test;
+mod batch_test;
 
-use clap::Subcommand;
-use thiserror::Error;
-
-use crate::commands::batch_test::{test, BatchTestArgs, BatchTestCommandError};
-
-#[derive(Subcommand, Debug)]
-pub(crate) enum Command {
-    #[command(visible_alias = "t")]
-    Test(BatchTestArgs),
+#[derive(thiserror::Error, Debug)]
+pub(super) enum Error {
+    #[error("BatchTest command failed.")]
+    BatchTestFailed(#[from] crate::commands::batch_test::Error),
 }
 
-#[derive(Error, Debug)]
-pub(crate) enum CommandError {
-    #[error("Test command failed")]
-    TestFailed(#[from] BatchTestCommandError),
+#[derive(clap::Subcommand, Debug)]
+pub(super) enum Command {
+    #[command(visible_alias = "tb")]
+    BatchTest(crate::commands::batch_test::Args),
 }
 
-pub(crate) fn exec_command(command: &Command) -> Result<(), CommandError> {
-    match command {
-        Command::Test(args) => {
-            test(args)?;
+impl Command {
+    pub(super) fn run(&self) -> Result<(), Error> {
+        use crate::commands::batch_test;
+        match self {
+            Command::BatchTest(args) => {
+                batch_test::run(args)?;
+            }
         }
+        Ok(())
     }
-    Ok(())
 }

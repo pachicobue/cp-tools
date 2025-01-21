@@ -1,5 +1,7 @@
 mod commands;
+mod generator;
 mod judge;
+mod testcase;
 
 use clap::Parser;
 use clap_verbosity_flag::{InfoLevel, Verbosity};

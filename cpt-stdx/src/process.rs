@@ -1,7 +1,7 @@
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    #[error("Failed to start program(command: `$ {0}`).")]
-    FailedToStartProgram(Command),
+    #[error("Failed to spawn(command: `$ {0}`).")]
+    SpawnFailed(Command),
 
     // Generally, exit statuses "Aborted" or "Timeout" are not treated as errors in this application.
     // To get errors reported, please specify `ensure_success=true` when calling the relevant function or method.
@@ -15,6 +15,24 @@ pub enum Error {
 pub struct Status {
     pub summary: StatusSummary,
     pub detail: StatusDetail,
+}
+impl Status {
+    pub fn from(output: std::process::Output) -> Self {
+        let start = tokio::time::Instant::now();
+        let detail = StatusDetail {
+            stdout: String::from_utf8_lossy(&output.stdout).into(),
+            stderr: String::from_utf8_lossy(&output.stderr).into(),
+            elapsed_ms: (tokio::time::Instant::now() - start).as_millis() as u64,
+        };
+        Status {
+            summary: if output.status.success() {
+                StatusSummary::Success
+            } else {
+                StatusSummary::Aborted
+            },
+            detail,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -53,6 +71,17 @@ impl Command {
                 .collect(),
         }
     }
+    pub fn spawn(&self, redirect: IoRedirection) -> Result<tokio::process::Child, Error> {
+        let mut command = tokio::process::Command::new(&self.program);
+        command
+            .kill_on_drop(true)
+            .args(&self.args)
+            .stdin(redirect.stdin)
+            .stdout(redirect.stdout)
+            .stderr(redirect.stderr)
+            .spawn()
+            .map_err(|_| Error::SpawnFailed(self.to_owned()))
+    }
     pub fn exec(
         &self,
         redirect: IoRedirection,
@@ -63,7 +92,48 @@ impl Command {
             .enable_all()
             .build()
             .unwrap()
-            .block_on(async { exec_with_to(self, redirect, timeout_ms).await })?;
+            .block_on(async {
+                match tokio::time::timeout(
+                    tokio::time::Duration::from_millis(timeout_ms) * 2,
+                    async {
+                        Ok(Status::from(
+                            self.spawn(redirect)?.wait_with_output().await.unwrap(),
+                        ))
+                    },
+                )
+                .await
+                {
+                    Ok(Err(e)) => Err(e),
+                    Ok(Ok(Status { summary, detail })) => match summary {
+                        StatusSummary::Success => {
+                            if detail.elapsed_ms <= timeout_ms {
+                                Ok(Status {
+                                    summary: StatusSummary::Success,
+                                    detail,
+                                })
+                            } else {
+                                Ok(Status {
+                                    summary: StatusSummary::Timeout,
+                                    detail,
+                                })
+                            }
+                        }
+                        StatusSummary::Aborted => Ok(Status {
+                            summary: StatusSummary::Aborted,
+                            detail,
+                        }),
+                        _ => unreachable!(),
+                    },
+                    Err(_) => Ok(Status {
+                        summary: StatusSummary::Timeout,
+                        detail: StatusDetail {
+                            stdout: "".into(),
+                            stderr: "".into(),
+                            elapsed_ms: timeout_ms * 2,
+                        },
+                    }),
+                }
+            })?;
         if ensure_success {
             match res.summary {
                 StatusSummary::Success => Ok(res),
@@ -99,77 +169,4 @@ pub struct IoRedirection {
     pub stdin: std::process::Stdio,
     pub stdout: std::process::Stdio,
     pub stderr: std::process::Stdio,
-}
-
-async fn exec_without_to(expr: &Command, redirect: IoRedirection) -> Result<Status, Error> {
-    let mut command = tokio::process::Command::new(&expr.program);
-
-    let start = tokio::time::Instant::now();
-    let output = command
-        .args(&expr.args)
-        .stdin(redirect.stdin)
-        .stdout(redirect.stdout)
-        .stderr(redirect.stderr)
-        .spawn()
-        .map_err(|_| Error::FailedToStartProgram(expr.to_owned()))?
-        .wait_with_output()
-        .await
-        .unwrap();
-    let detail = StatusDetail {
-        stdout: String::from_utf8_lossy(&output.stdout).into(),
-        stderr: String::from_utf8_lossy(&output.stderr).into(),
-        elapsed_ms: (tokio::time::Instant::now() - start).as_millis() as u64,
-    };
-    Ok(Status {
-        summary: if output.status.success() {
-            StatusSummary::Success
-        } else {
-            StatusSummary::Aborted
-        },
-        detail,
-    })
-}
-
-async fn exec_with_to(
-    expr: &Command,
-    redirect: IoRedirection,
-    timeout_ms: u64,
-) -> Result<Status, Error> {
-    use std::time::Duration;
-    match tokio::time::timeout(
-        Duration::from_millis(timeout_ms) * 2,
-        exec_without_to(expr, redirect),
-    )
-    .await
-    {
-        Ok(Err(e)) => Err(e),
-        Ok(Ok(Status { summary, detail })) => match summary {
-            StatusSummary::Success => {
-                if detail.elapsed_ms <= timeout_ms {
-                    Ok(Status {
-                        summary: StatusSummary::Success,
-                        detail,
-                    })
-                } else {
-                    Ok(Status {
-                        summary: StatusSummary::Timeout,
-                        detail,
-                    })
-                }
-            }
-            StatusSummary::Aborted => Ok(Status {
-                summary: StatusSummary::Aborted,
-                detail,
-            }),
-            _ => unreachable!(),
-        },
-        Err(_) => Ok(Status {
-            summary: StatusSummary::Timeout,
-            detail: StatusDetail {
-                stdout: "".into(),
-                stderr: "".into(),
-                elapsed_ms: timeout_ms * 2,
-            },
-        }),
-    }
 }

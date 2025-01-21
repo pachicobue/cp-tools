@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+use itertools::Itertools;
+
 #[derive(clap::Args, Debug)]
 pub(crate) struct Args {
     #[arg(required = true, short = 'c')]
@@ -16,12 +18,17 @@ pub(crate) enum Error {
     CasedirNotFound(PathBuf),
     #[error("`{0}` is not a directory.")]
     CasedirNotDir(PathBuf),
+    #[error("No case found in `{0}`.")]
+    CaseNotFound(PathBuf),
     #[error("Judge failed.")]
-    JudgeFailed(#[source] crate::judge::batch::Error),
+    JudgeFailed(#[from] crate::judge::batch::Error),
 }
 
 pub(super) fn run(args: &Args) -> Result<(), Error> {
+    use strum::{EnumCount, IntoEnumIterator};
+
     use crate::judge::batch::judge;
+    use crate::judge::Verdict;
 
     log::info!("[Batch Test] Start");
     let dir = &args.directory;
@@ -32,8 +39,22 @@ pub(super) fn run(args: &Args) -> Result<(), Error> {
         return Err(Error::CasedirNotDir(dir.to_owned()));
     }
 
-    let _ = judge(&args.command, dir, args.timelimit_ms.unwrap_or(10000))
-        .map_err(Error::JudgeFailed)?;
-    log::info!("[Batch Test] End");
+    let cases = crate::testcase::collect(dir);
+    if cases.is_empty() {
+        return Err(Error::CaseNotFound(dir.to_owned()));
+    }
+
+    let timelimit = args.timelimit_ms.unwrap_or(10000);
+    let mut results = [0; Verdict::COUNT];
+    for case in cases {
+        let verdict = judge(&args.command, case, timelimit, dir)?;
+        results[verdict as usize] += 1;
+    }
+    log::info!(
+        "[Batch Test] End ({})",
+        Verdict::iter()
+            .map(|verdict| format!("{}:{}", verdict.to_owned(), results[verdict as usize]))
+            .join(",")
+    );
     Ok(())
 }

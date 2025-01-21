@@ -1,23 +1,30 @@
-mod batch_test;
+mod hack;
+mod test;
 
 #[derive(thiserror::Error, Debug)]
 pub(super) enum Error {
-    #[error("BatchTest command failed.")]
-    BatchTestFailed(#[from] crate::commands::batch_test::Error),
+    #[error("Test failed.")]
+    TestFailed(#[from] crate::commands::test::Error),
+    #[error("Hack failed.")]
+    HackFailed(#[from] crate::commands::hack::Error),
 }
 
 #[derive(clap::Subcommand, Debug)]
 pub(super) enum Command {
-    #[command(visible_alias = "tb")]
-    BatchTest(crate::commands::batch_test::Args),
+    #[command(subcommand, visible_alias = "t")]
+    Test(crate::commands::test::Command),
+    #[command(subcommand, visible_alias = "h")]
+    Hack(crate::commands::hack::Command),
 }
 
 impl Command {
     pub(super) fn run(&self) -> Result<(), Error> {
-        use crate::commands::batch_test;
         match self {
-            Command::BatchTest(args) => {
-                batch_test::run(args)?;
+            Command::Test(command) => {
+                command.run()?;
+            }
+            Command::Hack(command) => {
+                command.run()?;
             }
         }
         Ok(())

@@ -7,17 +7,20 @@ Commandline tools for competitive programming.
 ### Test helper
 
 - Test samples
-    - Batch
-    - Special judge
-    - Reactive
-    - Run twice
-- Generate testcases
-    - Hack-case generation (WA/TLE/RE)
+    - [x] Batch
+    - [x] Special judge
+    - [x] Reactive
+    - [ ] Run twice
+- Hackcase generation(WA/RE/TLE)
+    - [x] Batch
+    - [x] Special judge
+    - [x] Reactive
+    - [ ] Run twice
 
 ### Expand library code (a.k.a `Bundle`)
 
 - Expansion command binaries
-    - [ ] C++
+    - [x] C++
         - Based on `clang++ -E` command.
 
 ## Ambitious Goals
@@ -26,22 +29,10 @@ Commandline tools for competitive programming.
     - Download samples
     - Submission
 
-## Not Goals
-
-- Language specific command wrappers (such as building/executing).
-    - Because these commands can be easily wrapped. For example, shell-aliases, Makefile,...
-    - `Expand library code` support is the exception of philosophy.
-        - This is neccesary for me, and can be complicated to wrap. 
-
-### Limitation
-
-- Only tested for linux
-
 ## Installation
 
-1. `cd cargo-core`
-  
-2. `cargo install --path .`
+- `cargo install --path cpt-core`
+- `cargo install --path cpt-extras`
 
 ## Usage
 

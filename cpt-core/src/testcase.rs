@@ -14,25 +14,19 @@ pub(crate) struct Testcase {
 pub(crate) fn collect(dir: &Path) -> Vec<Testcase> {
     use ignore::WalkBuilder;
 
-    use cpt_stdx::path::PathInfo;
+    use cpt_stdx::path::{get_extension, get_filestem};
 
     let mut cases: Vec<Testcase> = Vec::new();
     let mut builder = WalkBuilder::new(dir);
     builder.standard_filters(false).max_depth(Some(1));
     for entry in builder.build().filter(|entry| entry.as_ref().is_ok()) {
-        let input_pathinfo = PathInfo::from(entry.unwrap().path());
-        if input_pathinfo.extension == INPUT_EXT {
-            let input = input_pathinfo.path;
-            let output = PathInfo::new(
-                &input_pathinfo.basedir,
-                &input_pathinfo.filestem,
-                OUTPUT_EXT,
-            )
-            .path;
+        let input_path = entry.unwrap().path().to_path_buf();
+        if get_extension(&input_path) == INPUT_EXT {
+            let output_path = input_path.with_extension(OUTPUT_EXT);
             cases.push(Testcase {
-                casename: input_pathinfo.filestem,
-                input,
-                output: output.exists().then_some(output),
+                casename: get_filestem(&input_path),
+                input: input_path,
+                output: output_path.exists().then_some(output_path),
             });
         }
     }

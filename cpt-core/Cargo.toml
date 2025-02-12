@@ -28,7 +28,6 @@ strum.workspace = true
 [dev-dependencies]
 assert_cmd = "2.0.14"
 assert_fs = "1.1.2"
-mockall = "0.13.0"
 predicates = "3.1.2"
 pretty_assertions = "1.4.0"
-test-case = "3.3.1"
+rstest = "0.24.0"

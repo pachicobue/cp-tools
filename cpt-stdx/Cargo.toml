@@ -16,3 +16,9 @@ log.workspace = true
 tempfile.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
+
+[dev-dependencies]
+assert_fs = "1.1.2"
+pretty_assertions = "1.4.0"
+rstest = "0.24.0"
+test-case = "3.3.1"

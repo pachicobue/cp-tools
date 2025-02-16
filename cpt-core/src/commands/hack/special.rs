@@ -4,7 +4,7 @@ use std::path::PathBuf;
 pub(crate) struct Args {
     #[arg(required = true, short = 'c')]
     command: String,
-    #[arg(required = false, short = 'j')]
+    #[arg(required = true, short = 'j')]
     judge: String,
     #[arg(required = true, short = 'i')]
     input_generator: String,

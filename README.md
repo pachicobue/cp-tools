@@ -1,6 +1,6 @@
 # cp-tools(cpt)
 
-Commandline tools for competitive programming.
+Command line tools for competitive programming.
 
 ## Goals
 
@@ -36,6 +36,111 @@ Commandline tools for competitive programming.
 
 ## Usage
 
+There are some hidden (not neccesary) arguments.
+(eg) `--tl` for timelimit.
+
+Check `cpt --help` for more information.
+
+### Test 
+
+#### Batch (Most basic test)
+
+**(Notice) Judge with absolute/relative error is not supported.
+Use special judge for this situation.**
+
+```sh
+cpt test batch -c "./main.exe" -d test
+
+(short version)
+cpt t b -c "./main.exe" -d test
+```
+
+- arguments
+    - `-c`: command
+    - `-d`: directory path which contains testcases
+        - Intermediate files (including debug outputs from stderr) will be stored in this directory.
+
+#### Special judge
+
+```sh
+cpt test batch -c "./main.exe" -j "./judge.exe" -d test
+
+(short version)
+cpt t s -c "./main.exe" -j "./judge.exe" -d test
+```
+
+- arguments
+    - `-c`: command
+    - `-j`: judge command
+        - Judge command should take two arguments.  
+        - `<judge_command> <input_path> <output_path>`
+    - `-d`: directory path which contains testcases
+
+#### Reactive judge
+
+
+```sh
+cpt test reactive -c "./main.exe" -j "./judge.exe" -d test
+
+(short version)
+cpt t r -c "./main.exe" -j "./judge.exe" -d test
+```
+
+- arguments
+    - `-c`: command
+    - `-j`: judge command
+        - Judge command should take one arguments.  
+        - `<judge_command> <input_path>`
+    - `-d`: directory path which contains testcases
+
+### Hackcase Generation
+
+#### Batch
+
+```sh
+cpt hack batch -c "./main.exe" -i "./gen_input.exe" -d test
+
+(short version)
+cpt t b -c "./main.exe" -i "./gen_input.exe" -d test
+```
+
+- arguments
+    - `-c`: command
+    - `-i`: input generator
+    - `-o`: *(Optional)* output generator
+    - `-d`: directory path to generate testcase
+
+#### Special judge
+
+```sh
+cpt hack special -c "./main.exe" -i "./gen_input.exe" -j "./judge.exe" -d test
+
+(short version)
+cpt h s -c "./main.exe" -i "./gen_input.exe" -j "./judge.exe" -d test
+```
+
+- arguments
+    - `-c`: command
+    - `-i`: input generator
+    - `-j`: judge command
+        - `<judge_command> <input_path> <output_path>`
+    - `-d`: directory path which contains testcases
+
+#### Reactive judge
+
+```sh
+cpt hack reactive -c "./main.exe" -i "./gen_input.exe" -j "./judge.exe" -d test
+
+(short version)
+cpt t r -c "./main.exe" -j "./judge.exe" -d test
+```
+
+- arguments
+    - `-c`: command
+    - `-i`: input generator
+    - `-j`: judge command
+        - `<judge_command> <input_path>`
+    - `-d`: directory path which contains testcases
 
 ## Credits
 

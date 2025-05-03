@@ -215,7 +215,7 @@ checksum = "5b63caa9aa9397e2d9480a9b13673856c78d8ac123288526c37d7839f2a86990"
 
 [[package]]
 name = "cpt"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "assert_cmd",
  "assert_fs",
@@ -239,7 +239,7 @@ dependencies = [
 
 [[package]]
 name = "cpt-extras"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "clap",
  "clap-verbosity-flag",
@@ -253,7 +253,7 @@ dependencies = [
 
 [[package]]
 name = "cpt-stdx"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "assert_fs",
  "itertools",

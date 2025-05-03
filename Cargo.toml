@@ -3,7 +3,7 @@ resolver = "2"
 members = ["cpt-core", "cpt-extras", "cpt-stdx"]
 
 [workspace.package]
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
 authors = ["Pachicobue"]
 categories = ["command-line-utilities"]

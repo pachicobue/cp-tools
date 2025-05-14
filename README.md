@@ -32,7 +32,7 @@ Command line tools for competitive programming.
 ## Installation
 
 - `cargo install --path cpt-core`
-- `cargo install --path cpt-extras`
+- `cargo install --path cpt-extra`
 
 ## Usage
 

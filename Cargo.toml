@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["cpt-core", "cpt-extras", "cpt-stdx"]
+members = ["cpt-core", "cpt-extra", "cpt-stdx"]
 
 [workspace.package]
 version = "1.0.0"

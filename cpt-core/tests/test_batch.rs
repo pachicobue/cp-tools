@@ -6,6 +6,7 @@ use std::{
 };
 
 use assert_cmd::prelude::*;
+use predicates::prelude::*;
 
 use crate::common::{with_tempdir, write_sync, CRATE_NAME};
 
@@ -28,6 +29,7 @@ fn command_exec_failed() {
 
         cmd.args([
             "test",
+            "batch",
             "-c",
             "/usr/bin/false",
             "-d",
@@ -44,15 +46,31 @@ fn directory_not_found() {
         dirpath = tempdir.path().to_path_buf().clone();
     });
     let mut cmd = Command::cargo_bin(CRATE_NAME).unwrap();
-    cmd.args(["test", "-c", "cat", "-d", dirpath.to_str().unwrap()]);
-    cmd.assert().failure();
+    cmd.args([
+        "test",
+        "batch",
+        "-c",
+        "cat",
+        "-d",
+        dirpath.to_str().unwrap(),
+    ]);
+    cmd.assert()
+        .success()
+        .stderr(predicate::str::contains("is not found"));
 }
 
 #[test]
 fn testcase_not_found() {
     with_tempdir(|tempdir| {
         let mut cmd = Command::cargo_bin(CRATE_NAME).unwrap();
-        cmd.args(["test", "-c", "cat", "-d", tempdir.path().to_str().unwrap()]);
+        cmd.args([
+            "test",
+            "batch",
+            "-c",
+            "cat",
+            "-d",
+            tempdir.path().to_str().unwrap(),
+        ]);
         cmd.assert().success();
     });
 }
@@ -65,7 +83,14 @@ fn testcase_pass() {
         prepare(tempdir.path(), "AC_2", "123\n456", Some("123\n456"));
         prepare(tempdir.path(), "AC_input_only", "hoge", None);
 
-        cmd.args(["test", "-c", "cat", "-d", tempdir.path().to_str().unwrap()]);
+        cmd.args([
+            "test",
+            "batch",
+            "-c",
+            "cat",
+            "-d",
+            tempdir.path().to_str().unwrap(),
+        ]);
         cmd.assert().success();
     });
 }

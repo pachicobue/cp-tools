@@ -1,3 +1,37 @@
+/// Creates a formatted stacktrace string from an error.
+///
+/// This function recursively traverses the error chain using the `source()` method
+/// and formats each error level with indentation to create a hierarchical stacktrace.
+///
+/// # Arguments
+///
+/// * `error` - Any error that implements `std::error::Error`
+///
+/// # Returns
+///
+/// A formatted string containing the error stacktrace with each level indented
+///
+/// # Example
+///
+/// ```rust
+/// use cpt_stdx::error::stacktrace;
+/// use std::error::Error;
+/// use std::fmt;
+///
+/// #[derive(Debug)]
+/// struct MyError;
+///
+/// impl fmt::Display for MyError {
+///     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+///         write!(f, "Something went wrong")
+///     }
+/// }
+///
+/// impl Error for MyError {}
+///
+/// let trace = stacktrace(MyError);
+/// assert!(trace.contains("Something went wrong"));
+/// ```
 pub fn stacktrace<E>(error: E) -> String
 where
     E: std::error::Error,

@@ -1,22 +1,39 @@
+/// Error types for process execution operations.
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
+    /// Failed to spawn the command process.
     #[error("Failed to spawn(command: `$ {0}`).")]
     SpawnFailed(Command),
 
-    // Generally, exit statuses "Aborted" or "Timeout" are not treated as errors in this application.
-    // To get errors reported, please specify `ensure_success=true` when calling the relevant function or method.
+    /// Program exited with non-zero status.
+    ///
+    /// Generally, exit statuses "Aborted" or "Timeout" are not treated as errors in this application.
+    /// To get errors reported, please specify `ensure_success=true` when calling the relevant function or method.
     #[error("Program aborted(command:`$ {0}`, stderr:`{1}`).")]
     ProgramAborted(Command, String),
+    /// Program exceeded the specified timeout limit.
     #[error("Program timeout(command:`$ {0}`, elapsed:{2}ms/{1}ms")]
     ProgramTimeout(Command, u64, u64),
 }
 
+/// Represents the execution status of a command.
 #[derive(Debug, Clone)]
 pub struct Status {
+    /// High-level summary of the execution result.
     pub summary: StatusSummary,
+    /// Detailed information about the execution.
     pub detail: StatusDetail,
 }
 impl Status {
+    /// Creates a Status from a std::process::Output.
+    ///
+    /// # Arguments
+    ///
+    /// * `output` - The process output to convert
+    ///
+    /// # Returns
+    ///
+    /// A Status instance with appropriate summary and details
     pub fn from(output: std::process::Output) -> Self {
         let start = tokio::time::Instant::now();
         let detail = StatusDetail {
@@ -35,28 +52,60 @@ impl Status {
     }
 }
 
+/// High-level summary of command execution status.
 #[derive(Debug, Clone, PartialEq)]
 pub enum StatusSummary {
+    /// Command completed successfully (exit code 0).
     Success,
+    /// Command terminated with non-zero exit code.
     Aborted,
+    /// Command exceeded the specified timeout.
     Timeout,
 }
 
+/// Detailed information about command execution.
 #[derive(Debug, Clone)]
 pub struct StatusDetail {
-    // To capture stdout/stderr, it is necessary to specify `Stdio::piped()` for `CommandIoRedirection::stdout/stderr`.
-    // Otherwise an empty string will return.
+    /// Standard output captured from the command.
+    ///
+    /// To capture stdout/stderr, it is necessary to specify `Stdio::piped()` for `CommandIoRedirection::stdout/stderr`.
+    /// Otherwise an empty string will return.
     pub stdout: String,
+    /// Standard error captured from the command.
     pub stderr: String,
+    /// Execution time in milliseconds.
     pub elapsed_ms: u64,
 }
 
+/// Represents a command to be executed with its program name and arguments.
 #[derive(Debug, Clone)]
 pub struct Command {
+    /// The program name or path to execute.
     pub program: String,
+    /// The command-line arguments to pass to the program.
     pub args: Vec<String>,
 }
 impl Command {
+    /// Creates a new Command with the specified program and arguments.
+    ///
+    /// # Arguments
+    ///
+    /// * `program` - The program name or path to execute
+    /// * `args` - An iterable of command-line arguments
+    ///
+    /// # Returns
+    ///
+    /// A new Command instance
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use cpt_stdx::process::Command;
+    ///
+    /// let cmd = Command::new("echo", vec!["hello", "world"]);
+    /// assert_eq!(cmd.program, "echo");
+    /// assert_eq!(cmd.args, vec!["hello", "world"]);
+    /// ```
     pub fn new<S1, I1, S2>(program: S1, args: I1) -> Self
     where
         S1: AsRef<str>,
@@ -71,6 +120,31 @@ impl Command {
                 .collect(),
         }
     }
+    /// Spawns the command as a child process with the specified I/O redirection.
+    ///
+    /// # Arguments
+    ///
+    /// * `redirect` - I/O redirection configuration for stdin, stdout, and stderr
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Child)` - The spawned child process
+    /// * `Err(Error::SpawnFailed)` - If the process could not be spawned
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use cpt_stdx::process::{Command, IoRedirection};
+    /// use std::process::Stdio;
+    ///
+    /// let cmd = Command::new("echo", vec!["hello"]);
+    /// let redirect = IoRedirection {
+    ///     stdin: Stdio::null(),
+    ///     stdout: Stdio::piped(),
+    ///     stderr: Stdio::piped(),
+    /// };
+    /// // let child = cmd.spawn(redirect).expect("Failed to spawn");
+    /// ```
     pub fn spawn(&self, redirect: IoRedirection) -> Result<tokio::process::Child, Error> {
         let mut command = tokio::process::Command::new(&self.program);
         command
@@ -82,6 +156,35 @@ impl Command {
             .spawn()
             .map_err(|_| Error::SpawnFailed(self.to_owned()))
     }
+    /// Executes the command and waits for it to complete.
+    ///
+    /// # Arguments
+    ///
+    /// * `redirect` - I/O redirection configuration
+    /// * `timeout_ms` - Maximum execution time in milliseconds
+    /// * `ensure_success` - If true, returns an error for non-zero exit codes or timeouts
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Status)` - Execution status and details
+    /// * `Err(Error::SpawnFailed)` - If the process could not be spawned
+    /// * `Err(Error::ProgramAborted)` - If ensure_success is true and the program failed
+    /// * `Err(Error::ProgramTimeout)` - If ensure_success is true and the program timed out
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use cpt_stdx::process::{Command, IoRedirection};
+    /// use std::process::Stdio;
+    ///
+    /// let cmd = Command::new("echo", vec!["hello"]);
+    /// let redirect = IoRedirection {
+    ///     stdin: Stdio::null(),
+    ///     stdout: Stdio::piped(),
+    ///     stderr: Stdio::piped(),
+    /// };
+    /// let status = cmd.exec(redirect, 5000, false).expect("Failed to execute");
+    /// ```
     pub fn exec(
         &self,
         redirect: IoRedirection,
@@ -153,30 +256,63 @@ impl Command {
 }
 
 impl<T: AsRef<str>> From<T> for Command {
+    /// Creates a Command from a string by splitting on spaces.
+    ///
+    /// # Arguments
+    ///
+    /// * `command_str` - A string containing the program and arguments separated by spaces
+    ///
+    /// # Returns
+    ///
+    /// A Command instance with the first word as program and remaining words as arguments
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use cpt_stdx::process::Command;
+    ///
+    /// let cmd: Command = "echo hello world".into();
+    /// assert_eq!(cmd.program, "echo");
+    /// assert_eq!(cmd.args, vec!["hello", "world"]);
+    /// ```
     fn from(command_str: T) -> Self {
         let args: Vec<&str> = command_str.as_ref().split(' ').collect();
         Self::new(args.first().unwrap_or(&""), args[1..].to_owned())
     }
 }
 impl std::fmt::Display for Command {
+    /// Formats the Command as a space-separated string.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use cpt_stdx::process::Command;
+    ///
+    /// let cmd = Command::new("echo", vec!["hello", "world"]);
+    /// assert_eq!(format!("{}", cmd), "echo hello world");
+    /// ```
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} {}", self.program, self.args.join(" "))
     }
 }
 
+/// Configuration for I/O redirection when spawning processes.
 #[derive(Debug)]
 pub struct IoRedirection {
+    /// Standard input redirection (null, piped, inherit).
     pub stdin: std::process::Stdio,
+    /// Standard output redirection (null, piped, inherit).
     pub stdout: std::process::Stdio,
+    /// Standard error redirection (null, piped, inherit).
     pub stderr: std::process::Stdio,
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::process::Stdio;
     #[cfg(unix)]
     use std::os::unix::process::ExitStatusExt;
+    use std::process::Stdio;
 
     #[test]
     fn test_command_new() {
@@ -254,7 +390,7 @@ mod tests {
             stdout: Stdio::piped(),
             stderr: Stdio::piped(),
         };
-        
+
         let result = cmd.exec(redirect, 5000, false);
         assert!(result.is_ok());
         let status = result.unwrap();
@@ -270,7 +406,7 @@ mod tests {
             stdout: Stdio::piped(),
             stderr: Stdio::piped(),
         };
-        
+
         let result = cmd.exec(redirect, 5000, true);
         assert!(result.is_ok());
     }
@@ -283,11 +419,11 @@ mod tests {
             stdout: Stdio::piped(),
             stderr: Stdio::piped(),
         };
-        
+
         let result = cmd.exec(redirect, 5000, false);
         assert!(result.is_err());
         match result.unwrap_err() {
-            Error::SpawnFailed(_) => {},
+            Error::SpawnFailed(_) => {}
             _ => panic!("Expected SpawnFailed error"),
         }
     }
@@ -300,7 +436,7 @@ mod tests {
             stdout: Stdio::piped(),
             stderr: Stdio::piped(),
         };
-        
+
         let result = cmd.exec(redirect, 5000, false);
         assert!(result.is_ok());
         let status = result.unwrap();
@@ -315,11 +451,11 @@ mod tests {
             stdout: Stdio::piped(),
             stderr: Stdio::piped(),
         };
-        
+
         let result = cmd.exec(redirect, 5000, true);
         assert!(result.is_err());
         match result.unwrap_err() {
-            Error::ProgramAborted(_, _) => {},
+            Error::ProgramAborted(_, _) => {}
             _ => panic!("Expected ProgramAborted error"),
         }
     }
@@ -332,7 +468,7 @@ mod tests {
             stdout: Stdio::piped(),
             stderr: Stdio::piped(),
         };
-        
+
         let result = cmd.exec(redirect, 100, false); // 100ms timeout
         assert!(result.is_ok());
         let status = result.unwrap();
@@ -347,11 +483,11 @@ mod tests {
             stdout: Stdio::piped(),
             stderr: Stdio::piped(),
         };
-        
+
         let result = cmd.exec(redirect, 100, true); // 100ms timeout
         assert!(result.is_err());
         match result.unwrap_err() {
-            Error::ProgramTimeout(_, _, _) => {},
+            Error::ProgramTimeout(_, _, _) => {}
             _ => panic!("Expected ProgramTimeout error"),
         }
     }

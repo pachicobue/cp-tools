@@ -27,7 +27,9 @@ fn test_special_directory_not_found() {
         "-d",
         "/nonexistent/directory",
     ]);
-    cmd.assert().failure().stderr(predicate::str::contains("is not found"));
+    cmd.assert()
+        .failure()
+        .stderr(predicate::str::contains("is not found"));
 }
 
 #[test]
@@ -44,7 +46,9 @@ fn test_special_no_cases() {
             "-d",
             tempdir.path().to_str().unwrap(),
         ]);
-        cmd.assert().failure().stderr(predicate::str::contains("No case found"));
+        cmd.assert()
+            .failure()
+            .stderr(predicate::str::contains("No case found"));
     });
 }
 
@@ -53,7 +57,7 @@ fn test_special_basic_success() {
     with_tempdir(|tempdir| {
         prepare_testcase(tempdir.path(), "AC_1", "hello", "hello");
         prepare_testcase(tempdir.path(), "AC_2", "world", "world");
-        
+
         let mut cmd = Command::cargo_bin(CRATE_NAME).unwrap();
         cmd.args([
             "test",
@@ -73,7 +77,7 @@ fn test_special_basic_success() {
 fn test_special_with_timelimit() {
     with_tempdir(|tempdir| {
         prepare_testcase(tempdir.path(), "AC_1", "hello", "hello");
-        
+
         let mut cmd = Command::cargo_bin(CRATE_NAME).unwrap();
         cmd.args([
             "test",
@@ -95,7 +99,7 @@ fn test_special_with_timelimit() {
 fn test_special_command_exec_failed() {
     with_tempdir(|tempdir| {
         prepare_testcase(tempdir.path(), "AC_1", "hello", "hello");
-        
+
         let mut cmd = Command::cargo_bin(CRATE_NAME).unwrap();
         cmd.args([
             "test",
@@ -107,7 +111,9 @@ fn test_special_command_exec_failed() {
             "-d",
             tempdir.path().to_str().unwrap(),
         ]);
-        cmd.assert().failure().stderr(predicate::str::contains("Failed to spawn"));
+        cmd.assert()
+            .failure()
+            .stderr(predicate::str::contains("Failed to spawn"));
     });
 }
 
@@ -115,7 +121,7 @@ fn test_special_command_exec_failed() {
 fn test_special_alias() {
     with_tempdir(|tempdir| {
         prepare_testcase(tempdir.path(), "AC_1", "hello", "hello");
-        
+
         let mut cmd = Command::cargo_bin(CRATE_NAME).unwrap();
         cmd.args([
             "test",
@@ -135,7 +141,7 @@ fn test_special_alias() {
 fn test_special_short_alias() {
     with_tempdir(|tempdir| {
         prepare_testcase(tempdir.path(), "AC_1", "hello", "hello");
-        
+
         let mut cmd = Command::cargo_bin(CRATE_NAME).unwrap();
         cmd.args([
             "t",
@@ -156,7 +162,7 @@ fn test_special_input_only_case() {
     with_tempdir(|tempdir| {
         let input_path = tempdir.path().join("AC_input_only.in");
         write_sync(&input_path, "test input", true);
-        
+
         let mut cmd = Command::cargo_bin(CRATE_NAME).unwrap();
         cmd.args([
             "test",

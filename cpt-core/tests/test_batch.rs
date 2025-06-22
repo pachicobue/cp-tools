@@ -35,7 +35,9 @@ fn command_exec_failed() {
             "-d",
             tempdir.path().to_str().unwrap(),
         ]);
-        cmd.assert().failure().stderr(predicate::str::contains("Failed to spawn"));
+        cmd.assert()
+            .failure()
+            .stderr(predicate::str::contains("Failed to spawn"));
     });
 }
 
@@ -71,7 +73,9 @@ fn testcase_not_found() {
             "-d",
             tempdir.path().to_str().unwrap(),
         ]);
-        cmd.assert().failure().stderr(predicate::str::contains("No case found"));
+        cmd.assert()
+            .failure()
+            .stderr(predicate::str::contains("No case found"));
     });
 }
 

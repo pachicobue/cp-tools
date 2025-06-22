@@ -29,14 +29,16 @@ fn hack_special_directory_not_found() {
         "-d",
         "/nonexistent/directory",
     ]);
-    cmd.assert().failure().stderr(predicate::str::contains("is not found"));
+    cmd.assert()
+        .failure()
+        .stderr(predicate::str::contains("is not found"));
 }
 
 #[test]
 fn hack_special_invalid_command() {
     with_tempdir(|tempdir| {
         prepare_testcase(tempdir.path(), "test1", "input1", "output1");
-        
+
         let mut cmd = Command::cargo_bin(CRATE_NAME).unwrap();
         cmd.args([
             "hack",
@@ -52,7 +54,9 @@ fn hack_special_invalid_command() {
             "-t",
             "100",
         ]);
-        cmd.assert().failure().stderr(predicate::str::contains("Failed to spawn"));
+        cmd.assert()
+            .failure()
+            .stderr(predicate::str::contains("Failed to spawn"));
     });
 }
 
@@ -60,7 +64,7 @@ fn hack_special_invalid_command() {
 fn hack_special_with_timelimit() {
     with_tempdir(|tempdir| {
         prepare_testcase(tempdir.path(), "test1", "input1", "output1");
-        
+
         let mut cmd = Command::cargo_bin(CRATE_NAME).unwrap();
         cmd.args([
             "hack",
@@ -76,7 +80,9 @@ fn hack_special_with_timelimit() {
             "-t",
             "50",
         ]);
-        cmd.assert().failure().stderr(predicate::str::contains("Failed to spawn"));
+        cmd.assert()
+            .failure()
+            .stderr(predicate::str::contains("Failed to spawn"));
     });
 }
 
@@ -84,7 +90,7 @@ fn hack_special_with_timelimit() {
 fn hack_special_alias() {
     with_tempdir(|tempdir| {
         prepare_testcase(tempdir.path(), "test1", "input1", "output1");
-        
+
         let mut cmd = Command::cargo_bin(CRATE_NAME).unwrap();
         cmd.args([
             "hack",
@@ -100,7 +106,9 @@ fn hack_special_alias() {
             "-t",
             "100",
         ]);
-        cmd.assert().failure().stderr(predicate::str::contains("Failed to spawn"));
+        cmd.assert()
+            .failure()
+            .stderr(predicate::str::contains("Failed to spawn"));
     });
 }
 
@@ -108,7 +116,7 @@ fn hack_special_alias() {
 fn hack_special_short_alias() {
     with_tempdir(|tempdir| {
         prepare_testcase(tempdir.path(), "test1", "input1", "output1");
-        
+
         let mut cmd = Command::cargo_bin(CRATE_NAME).unwrap();
         cmd.args([
             "h",
@@ -124,7 +132,9 @@ fn hack_special_short_alias() {
             "-t",
             "100",
         ]);
-        cmd.assert().failure().stderr(predicate::str::contains("Failed to spawn"));
+        cmd.assert()
+            .failure()
+            .stderr(predicate::str::contains("Failed to spawn"));
     });
 }
 
@@ -146,6 +156,8 @@ fn hack_special_empty_directory() {
             "-t",
             "100",
         ]);
-        cmd.assert().failure().stderr(predicate::str::contains("Failed to spawn"));
+        cmd.assert()
+            .failure()
+            .stderr(predicate::str::contains("Failed to spawn"));
     });
 }

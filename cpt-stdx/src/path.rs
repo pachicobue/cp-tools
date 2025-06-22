@@ -1,5 +1,24 @@
 use std::path::{Path, PathBuf};
 
+/// Extracts the file stem (filename without extension) from a path.
+///
+/// # Arguments
+///
+/// * `path` - Path to extract the file stem from
+///
+/// # Returns
+///
+/// The file stem as a String, or empty string if the path has no file stem
+///
+/// # Example
+///
+/// ```rust
+/// use cpt_stdx::path::get_filestem;
+///
+/// assert_eq!(get_filestem("test.txt"), "test");
+/// assert_eq!(get_filestem("/path/to/file.rs"), "file");
+/// assert_eq!(get_filestem("directory/"), "directory");
+/// ```
 pub fn get_filestem<T: AsRef<Path>>(path: T) -> String {
     path.as_ref()
         .file_stem()
@@ -8,10 +27,49 @@ pub fn get_filestem<T: AsRef<Path>>(path: T) -> String {
         .into()
 }
 
+/// Extracts the parent directory from a path.
+///
+/// # Arguments
+///
+/// * `path` - Path to extract the parent directory from
+///
+/// # Returns
+///
+/// The parent directory as a PathBuf, or empty path if no parent exists
+///
+/// # Example
+///
+/// ```rust
+/// use cpt_stdx::path::get_basedir;
+/// use std::path::Path;
+///
+/// assert_eq!(get_basedir("dir/file.txt"), Path::new("dir"));
+/// assert_eq!(get_basedir("/absolute/path/file.txt"), Path::new("/absolute/path"));
+/// assert_eq!(get_basedir("file.txt"), Path::new(""));
+/// ```
 pub fn get_basedir<T: AsRef<Path>>(path: T) -> PathBuf {
     path.as_ref().parent().unwrap_or(Path::new("")).into()
 }
 
+/// Extracts the file extension from a path.
+///
+/// # Arguments
+///
+/// * `path` - Path to extract the extension from
+///
+/// # Returns
+///
+/// The file extension as a String, or empty string if the path has no extension
+///
+/// # Example
+///
+/// ```rust
+/// use cpt_stdx::path::get_extension;
+///
+/// assert_eq!(get_extension("test.txt"), "txt");
+/// assert_eq!(get_extension("/path/to/file.rs"), "rs");
+/// assert_eq!(get_extension("no_extension"), "");
+/// ```
 pub fn get_extension<T: AsRef<Path>>(path: T) -> String {
     path.as_ref()
         .extension()

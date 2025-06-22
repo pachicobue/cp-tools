@@ -20,7 +20,7 @@ fn hack_batch_directory_not_found() {
         "-d",
         "/nonexistent/directory",
     ]);
-    cmd.assert().success().stderr(predicate::str::contains("is not found"));
+    cmd.assert().failure().stderr(predicate::str::contains("is not found"));
 }
 
 #[test]
@@ -39,8 +39,8 @@ fn hack_batch_invalid_command() {
             "-t",
             "100",
         ]);
-        // Should handle invalid commands gracefully
-        cmd.assert().success();
+        // Should fail with invalid command error
+        cmd.assert().failure().stderr(predicate::str::contains("Failed to spawn"));
     });
 }
 
@@ -62,8 +62,8 @@ fn hack_batch_with_output_generator() {
             "-t",
             "100",
         ]);
-        // Test with output generator
-        cmd.assert().success();
+        // Should fail with invalid command error
+        cmd.assert().failure().stderr(predicate::str::contains("Failed to spawn"));
     });
 }
 
@@ -83,8 +83,8 @@ fn hack_batch_alias() {
             "-t",
             "100",
         ]);
-        // Test batch alias
-        cmd.assert().success();
+        // Should fail with invalid command error
+        cmd.assert().failure().stderr(predicate::str::contains("Failed to spawn"));
     });
 }
 
@@ -104,7 +104,7 @@ fn hack_batch_short_alias() {
             "-t",
             "100",
         ]);
-        // Test short alias
-        cmd.assert().success();
+        // Should fail with invalid command error
+        cmd.assert().failure().stderr(predicate::str::contains("Failed to spawn"));
     });
 }

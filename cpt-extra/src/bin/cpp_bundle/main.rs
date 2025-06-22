@@ -38,11 +38,12 @@ enum Error {
     OutputFailed(#[source] cpt_stdx::fs::Error),
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     use cpt_stdx::error::stacktrace;
-    if let Err(e) = main_inner() {
-        log::error!("Error occurred\n{}", stacktrace(e));
-    }
+    main_inner().map_err(|e| {
+        log::error!("Error occurred\n{}", stacktrace(&e));
+        e.into()
+    })
 }
 
 fn main_inner() -> Result<(), Error> {

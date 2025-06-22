@@ -29,7 +29,7 @@ fn hack_special_directory_not_found() {
         "-d",
         "/nonexistent/directory",
     ]);
-    cmd.assert().success().stderr(predicate::str::contains("is not found"));
+    cmd.assert().failure().stderr(predicate::str::contains("is not found"));
 }
 
 #[test]
@@ -52,7 +52,7 @@ fn hack_special_invalid_command() {
             "-t",
             "100",
         ]);
-        cmd.assert().success();
+        cmd.assert().failure().stderr(predicate::str::contains("Failed to spawn"));
     });
 }
 
@@ -76,7 +76,7 @@ fn hack_special_with_timelimit() {
             "-t",
             "50",
         ]);
-        cmd.assert().success();
+        cmd.assert().failure().stderr(predicate::str::contains("Failed to spawn"));
     });
 }
 
@@ -100,7 +100,7 @@ fn hack_special_alias() {
             "-t",
             "100",
         ]);
-        cmd.assert().success();
+        cmd.assert().failure().stderr(predicate::str::contains("Failed to spawn"));
     });
 }
 
@@ -124,7 +124,7 @@ fn hack_special_short_alias() {
             "-t",
             "100",
         ]);
-        cmd.assert().success();
+        cmd.assert().failure().stderr(predicate::str::contains("Failed to spawn"));
     });
 }
 
@@ -146,6 +146,6 @@ fn hack_special_empty_directory() {
             "-t",
             "100",
         ]);
-        cmd.assert().success();
+        cmd.assert().failure().stderr(predicate::str::contains("Failed to spawn"));
     });
 }

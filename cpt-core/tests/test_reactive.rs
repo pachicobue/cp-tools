@@ -27,7 +27,7 @@ fn test_reactive_directory_not_found() {
         "-d",
         "/nonexistent/directory",
     ]);
-    cmd.assert().success().stderr(predicate::str::contains("is not found"));
+    cmd.assert().failure().stderr(predicate::str::contains("is not found"));
 }
 
 #[test]
@@ -44,7 +44,7 @@ fn test_reactive_no_cases() {
             "-d",
             tempdir.path().to_str().unwrap(),
         ]);
-        cmd.assert().success().stderr(predicate::str::contains("No case found"));
+        cmd.assert().failure().stderr(predicate::str::contains("No case found"));
     });
 }
 
@@ -107,7 +107,7 @@ fn test_reactive_command_exec_failed() {
             "-d",
             tempdir.path().to_str().unwrap(),
         ]);
-        cmd.assert().success();
+        cmd.assert().failure().stderr(predicate::str::contains("Failed to spawn"));
     });
 }
 

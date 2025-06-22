@@ -241,12 +241,15 @@ dependencies = [
 name = "cpt-extras"
 version = "1.0.0"
 dependencies = [
+ "assert_cmd",
  "clap",
  "clap-verbosity-flag",
  "cpt-stdx",
  "env_logger",
  "log",
+ "predicates",
  "regex",
+ "tempfile",
  "thiserror",
  "which",
 ]

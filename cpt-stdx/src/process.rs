@@ -170,3 +170,213 @@ pub struct IoRedirection {
     pub stdout: std::process::Stdio,
     pub stderr: std::process::Stdio,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::process::Stdio;
+    #[cfg(unix)]
+    use std::os::unix::process::ExitStatusExt;
+
+    #[test]
+    fn test_command_new() {
+        let cmd = Command::new("echo", vec!["hello", "world"]);
+        assert_eq!(cmd.program, "echo");
+        assert_eq!(cmd.args, vec!["hello", "world"]);
+    }
+
+    #[test]
+    fn test_command_from_string() {
+        let cmd: Command = "echo hello world".into();
+        assert_eq!(cmd.program, "echo");
+        assert_eq!(cmd.args, vec!["hello", "world"]);
+    }
+
+    #[test]
+    fn test_command_from_empty_string() {
+        let cmd: Command = "".into();
+        assert_eq!(cmd.program, "");
+        assert_eq!(cmd.args, Vec::<String>::new());
+    }
+
+    #[test]
+    fn test_command_from_single_word() {
+        let cmd: Command = "echo".into();
+        assert_eq!(cmd.program, "echo");
+        assert_eq!(cmd.args, Vec::<String>::new());
+    }
+
+    #[test]
+    fn test_command_display() {
+        let cmd = Command::new("echo", vec!["hello", "world"]);
+        assert_eq!(format!("{}", cmd), "echo hello world");
+    }
+
+    #[test]
+    fn test_command_display_no_args() {
+        let cmd = Command::new("echo", Vec::<String>::new());
+        assert_eq!(format!("{}", cmd), "echo ");
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_status_from_success() {
+        let output = std::process::Output {
+            status: std::process::ExitStatus::from_raw(0),
+            stdout: b"hello".to_vec(),
+            stderr: b"".to_vec(),
+        };
+        let status = Status::from(output);
+        assert_eq!(status.summary, StatusSummary::Success);
+        assert_eq!(status.detail.stdout, "hello");
+        assert_eq!(status.detail.stderr, "");
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_status_from_failure() {
+        let output = std::process::Output {
+            status: std::process::ExitStatus::from_raw(256), // Exit code 1
+            stdout: b"".to_vec(),
+            stderr: b"error".to_vec(),
+        };
+        let status = Status::from(output);
+        assert_eq!(status.summary, StatusSummary::Aborted);
+        assert_eq!(status.detail.stdout, "");
+        assert_eq!(status.detail.stderr, "error");
+    }
+
+    #[test]
+    fn test_command_exec_success() {
+        let cmd = Command::new("echo", vec!["hello"]);
+        let redirect = IoRedirection {
+            stdin: Stdio::null(),
+            stdout: Stdio::piped(),
+            stderr: Stdio::piped(),
+        };
+        
+        let result = cmd.exec(redirect, 5000, false);
+        assert!(result.is_ok());
+        let status = result.unwrap();
+        assert_eq!(status.summary, StatusSummary::Success);
+        assert!(status.detail.stdout.contains("hello"));
+    }
+
+    #[test]
+    fn test_command_exec_with_ensure_success_true() {
+        let cmd = Command::new("echo", vec!["hello"]);
+        let redirect = IoRedirection {
+            stdin: Stdio::null(),
+            stdout: Stdio::piped(),
+            stderr: Stdio::piped(),
+        };
+        
+        let result = cmd.exec(redirect, 5000, true);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_command_exec_nonexistent_program() {
+        let cmd = Command::new("nonexistent_program_xyz", Vec::<String>::new());
+        let redirect = IoRedirection {
+            stdin: Stdio::null(),
+            stdout: Stdio::piped(),
+            stderr: Stdio::piped(),
+        };
+        
+        let result = cmd.exec(redirect, 5000, false);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            Error::SpawnFailed(_) => {},
+            _ => panic!("Expected SpawnFailed error"),
+        }
+    }
+
+    #[test]
+    fn test_command_exec_false_command() {
+        let cmd = Command::new("false", Vec::<String>::new());
+        let redirect = IoRedirection {
+            stdin: Stdio::null(),
+            stdout: Stdio::piped(),
+            stderr: Stdio::piped(),
+        };
+        
+        let result = cmd.exec(redirect, 5000, false);
+        assert!(result.is_ok());
+        let status = result.unwrap();
+        assert_eq!(status.summary, StatusSummary::Aborted);
+    }
+
+    #[test]
+    fn test_command_exec_false_command_with_ensure_success() {
+        let cmd = Command::new("false", Vec::<String>::new());
+        let redirect = IoRedirection {
+            stdin: Stdio::null(),
+            stdout: Stdio::piped(),
+            stderr: Stdio::piped(),
+        };
+        
+        let result = cmd.exec(redirect, 5000, true);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            Error::ProgramAborted(_, _) => {},
+            _ => panic!("Expected ProgramAborted error"),
+        }
+    }
+
+    #[test]
+    fn test_command_exec_timeout() {
+        let cmd = Command::new("sleep", vec!["2"]);
+        let redirect = IoRedirection {
+            stdin: Stdio::null(),
+            stdout: Stdio::piped(),
+            stderr: Stdio::piped(),
+        };
+        
+        let result = cmd.exec(redirect, 100, false); // 100ms timeout
+        assert!(result.is_ok());
+        let status = result.unwrap();
+        assert_eq!(status.summary, StatusSummary::Timeout);
+    }
+
+    #[test]
+    fn test_command_exec_timeout_with_ensure_success() {
+        let cmd = Command::new("sleep", vec!["2"]);
+        let redirect = IoRedirection {
+            stdin: Stdio::null(),
+            stdout: Stdio::piped(),
+            stderr: Stdio::piped(),
+        };
+        
+        let result = cmd.exec(redirect, 100, true); // 100ms timeout
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            Error::ProgramTimeout(_, _, _) => {},
+            _ => panic!("Expected ProgramTimeout error"),
+        }
+    }
+
+    #[test]
+    fn test_status_summary_equality() {
+        assert_eq!(StatusSummary::Success, StatusSummary::Success);
+        assert_eq!(StatusSummary::Aborted, StatusSummary::Aborted);
+        assert_eq!(StatusSummary::Timeout, StatusSummary::Timeout);
+        assert_ne!(StatusSummary::Success, StatusSummary::Aborted);
+    }
+
+    #[test]
+    fn test_error_display() {
+        let cmd = Command::new("test", vec!["arg"]);
+        let err = Error::SpawnFailed(cmd.clone());
+        assert!(format!("{}", err).contains("Failed to spawn"));
+        assert!(format!("{}", err).contains("test arg"));
+
+        let err = Error::ProgramAborted(cmd.clone(), "stderr output".to_string());
+        assert!(format!("{}", err).contains("Program aborted"));
+        assert!(format!("{}", err).contains("stderr output"));
+
+        let err = Error::ProgramTimeout(cmd, 1000, 2000);
+        assert!(format!("{}", err).contains("Program timeout"));
+        assert!(format!("{}", err).contains("2000ms/1000ms"));
+    }
+}

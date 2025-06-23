@@ -26,5 +26,4 @@ rustPlatform.buildRustPackage {
   src = ../.;
   buildType = "release";
   buildAndTestSubdir = "cpt-core";
-  doCheck = false;
 }

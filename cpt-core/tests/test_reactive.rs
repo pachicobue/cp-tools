@@ -105,7 +105,7 @@ fn test_reactive_command_exec_failed() {
             "test",
             "reactive",
             "-c",
-            "/usr/bin/false",
+            "noexistent_command",
             "-j",
             "echo AC",
             "-d",

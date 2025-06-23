@@ -31,7 +31,7 @@ fn command_exec_failed() {
             "test",
             "batch",
             "-c",
-            "/usr/bin/false",
+            "noexistent_command",
             "-d",
             tempdir.path().to_str().unwrap(),
         ]);

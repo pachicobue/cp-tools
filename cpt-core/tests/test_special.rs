@@ -105,7 +105,7 @@ fn test_special_command_exec_failed() {
             "test",
             "special",
             "-c",
-            "/usr/bin/false",
+            "noexistent_command",
             "-j",
             "echo AC",
             "-d",

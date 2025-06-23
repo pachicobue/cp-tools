@@ -144,7 +144,7 @@ cpt t r -c "./main.exe" -j "./judge.exe" -d test
 
 ## Credits
 
-See [THIRD-PARTY-LICENSES.toml](THIRD-PARTY-LICENSES.toml). 
+See [CREDITS.toml](CREDITS.toml). 
 
 This tool is heavily inspired by [oj](https://github.com/online-judge-tools/oj) (Just a reinventing of the wheel...).
 

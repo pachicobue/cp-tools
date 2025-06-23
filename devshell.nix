@@ -11,13 +11,12 @@ let
 in
 pkgs.mkShell {
   # Add build dependencies
-  packages = [
+  packages = with pkgs; [
     toolchain
-    pkgs.cargo-audit
-    pkgs.cargo-bundle-licenses
-    pkgs.cargo-deny
-    pkgs.cargo-license
-    pkgs.taplo
+    cargo-about
+    cargo-machete
+    cargo-deny
+    taplo
   ];
 
   # Add environment variables

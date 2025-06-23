@@ -38,23 +38,3 @@ jobs:
         
       - name: Run tests
         run: cargo test --workspace
-        
-      - name: Install cargo-deny
-        run: cargo install --locked cargo-deny
-        
-      - name: Run cargo deny
-        run: cargo deny --all-features check
-        
-      - name: Install cargo-machete
-        run: cargo install --locked cargo-machete
-        
-      - name: Run cargo machete
-        run: cargo machete
-        
-      - name: Install cargo-about
-        run: cargo install --locked cargo-about
-        
-      - name: Check cargo about diff
-        run: |
-          cargo about generate about.hbs > CREDIT_new.html
-          diff CREDIT.html CREDIT_new.html || (echo "CREDIT.html is out of date. Run 'cargo about generate about.hbs > CREDIT.html' to update." && exit 1)

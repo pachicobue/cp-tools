@@ -13,7 +13,7 @@ pkgs.mkShell {
   # Add build dependencies
   packages = with pkgs; [
     toolchain
-    cargo-about
+    cargo-bundle-licenses
     cargo-machete
     cargo-deny
     taplo

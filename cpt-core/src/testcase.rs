@@ -97,11 +97,9 @@ impl Testcase {
             let temp_file = temp_dir.join(format!("{}.{}", self.casename, ext));
             let final_file = final_dir.join(format!("{}.{}", self.casename, ext));
 
-            if temp_file.exists() {
-                if let Err(_) = cpt_stdx::fs::copy(&temp_file, &final_file) {
-                    // Intermediate files are optional, so we don't fail if copy fails
-                    log::warn!("Failed to copy intermediate file: {}", temp_file.display());
-                }
+            if temp_file.exists() && cpt_stdx::fs::copy(&temp_file, &final_file).is_err() {
+                // Intermediate files are optional, so we don't fail if copy fails
+                log::warn!("Failed to copy intermediate file: {}", temp_file.display());
             }
         }
         Ok(())

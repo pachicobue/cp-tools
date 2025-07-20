@@ -81,4 +81,29 @@ impl Testcase {
         }
         Ok(())
     }
+
+    pub(crate) fn copy_to_with_intermediate_files(
+        &self,
+        target: &Testcase,
+        temp_dir: &std::path::Path,
+        final_dir: &std::path::Path,
+    ) -> Result<(), Error> {
+        // Copy main testcase files
+        self.copy_to(target)?;
+
+        // Copy intermediate files if they exist
+        let intermediate_extensions = ["actual.txt", "debug.txt", "judge.txt"];
+        for ext in &intermediate_extensions {
+            let temp_file = temp_dir.join(format!("{}.{}", self.casename, ext));
+            let final_file = final_dir.join(format!("{}.{}", self.casename, ext));
+
+            if temp_file.exists() {
+                if let Err(_) = cpt_stdx::fs::copy(&temp_file, &final_file) {
+                    // Intermediate files are optional, so we don't fail if copy fails
+                    log::warn!("Failed to copy intermediate file: {}", temp_file.display());
+                }
+            }
+        }
+        Ok(())
+    }
 }

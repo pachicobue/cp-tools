@@ -54,10 +54,11 @@ pub(super) fn run(args: &Args) -> Result<(), Error> {
             &args.output_generator,
             timelimit_generator,
         )?;
-        let verdict = judge(&args.command, case, timelimit_program, dir)?;
+        let temp_dir = std::env::temp_dir();
+        let verdict = judge(&args.command, case, timelimit_program, &temp_dir)?;
         log::info!("[Batch Hack][Trial {}] End: {}", trial, verdict);
         if !verdict.is_ac() {
-            temp_case.copy_to(&final_case)?;
+            temp_case.copy_to_with_intermediate_files(&final_case, &temp_dir, dir)?;
             break;
         }
     }

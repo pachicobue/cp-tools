@@ -59,8 +59,13 @@ pub(crate) fn new_hackcase(dir: &Path) -> (Testcase, Testcase) {
             };
             let final_case = Testcase {
                 casename,
-                input: dir.to_owned().join(temp_case.casename.clone() + "." + INPUT_EXT),
-                output: Some(dir.to_owned().join(temp_case.casename.clone() + "." + OUTPUT_EXT)),
+                input: dir
+                    .to_owned()
+                    .join(temp_case.casename.clone() + "." + INPUT_EXT),
+                output: Some(
+                    dir.to_owned()
+                        .join(temp_case.casename.clone() + "." + OUTPUT_EXT),
+                ),
             };
             return (temp_case, final_case);
         }

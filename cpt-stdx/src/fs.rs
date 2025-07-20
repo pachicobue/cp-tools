@@ -273,9 +273,9 @@ mod tests {
         let temp_dir = assert_fs::TempDir::new().unwrap();
         let src = temp_dir.path().join("src.txt");
         let dst = temp_dir.path().join("dst.txt");
-        
+
         std::fs::write(&src, "Copy Test!").unwrap();
-        
+
         let res = copy(&src, &dst);
         assert!(res.is_ok());
         assert!(dst.exists());

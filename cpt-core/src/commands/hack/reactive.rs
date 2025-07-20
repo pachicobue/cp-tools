@@ -48,8 +48,13 @@ pub(super) fn run(args: &Args) -> Result<(), Error> {
     loop {
         trial += 1;
         log::info!("[Batch Hack][Trial {}] Start", trial);
-        let case = generate(&temp_case, &args.input_generator, &None, timelimit_generator)
-            .map_err(Error::GenerationFailed)?;
+        let case = generate(
+            &temp_case,
+            &args.input_generator,
+            &None,
+            timelimit_generator,
+        )
+        .map_err(Error::GenerationFailed)?;
 
         let verdict = judge(&args.command, &args.judge, case, timelimit_program, dir)
             .map_err(Error::JudgeFailed)?;

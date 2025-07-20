@@ -13,6 +13,8 @@ pub enum Error {
     CreateFile(PathBuf),
     #[error("Could not create directory `{0}`.")]
     CreateDir(PathBuf),
+    #[error("Could not copy file from `{src}` to `{dst}`.")]
+    Copy { src: PathBuf, dst: PathBuf },
 }
 
 /// Reads the entire contents of a file as a UTF-8 string.
@@ -149,9 +151,48 @@ pub fn create(filepath: impl AsRef<Path>, ensure_exist: bool) -> Result<std::fs:
     std::fs::File::create(file).map_err(|_| Error::CreateFile(file.into()))
 }
 
+/// Copies a file from source to destination.
+///
+/// # Arguments
+///
+/// * `src` - Path to the source file
+/// * `dst` - Path to the destination file
+///
+/// # Returns
+///
+/// * `Ok(())` - If the file was copied successfully
+/// * `Err(Error::Copy)` - If the file cannot be copied
+///
+/// # Example
+///
+/// ```no_run
+/// use cpt_stdx::fs;
+///
+/// // Create a temporary file for the example
+/// let src = std::env::temp_dir().join("source.txt");
+/// let dst = std::env::temp_dir().join("destination.txt");
+/// std::fs::write(&src, "Hello, world!").unwrap();
+///
+/// fs::copy(&src, &dst).expect("Failed to copy file");
+/// assert_eq!(std::fs::read_to_string(&dst).unwrap(), "Hello, world!");
+///
+/// // Clean up
+/// std::fs::remove_file(&src).unwrap();
+/// std::fs::remove_file(&dst).unwrap();
+/// ```
+pub fn copy(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> Result<(), Error> {
+    let src_path = src.as_ref();
+    let dst_path = dst.as_ref();
+    std::fs::copy(src_path, dst_path).map_err(|_| Error::Copy {
+        src: src_path.into(),
+        dst: dst_path.into(),
+    })?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{create, open, read, write};
+    use super::{copy, create, open, read, write};
     use assert_fs::prelude::*;
     use pretty_assertions::assert_eq;
 
@@ -226,5 +267,25 @@ mod tests {
         let res = create(&file, true);
         assert!(res.is_ok());
         assert!(file.exists());
+    }
+    #[test]
+    fn copy_ok() {
+        let temp_dir = assert_fs::TempDir::new().unwrap();
+        let src = temp_dir.path().join("src.txt");
+        let dst = temp_dir.path().join("dst.txt");
+        
+        std::fs::write(&src, "Copy Test!").unwrap();
+        
+        let res = copy(&src, &dst);
+        assert!(res.is_ok());
+        assert!(dst.exists());
+        assert_eq!(read(dst).unwrap(), "Copy Test!");
+    }
+    #[test]
+    fn copy_error() {
+        let src = assert_fs::TempDir::new().unwrap().join("phantom_src.txt");
+        let dst = assert_fs::TempDir::new().unwrap().join("dst.txt");
+        let res = copy(&src, &dst);
+        assert!(res.is_err());
     }
 }

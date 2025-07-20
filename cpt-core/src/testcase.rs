@@ -4,6 +4,12 @@ const INPUT_EXT: &str = "in";
 const OUTPUT_EXT: &str = "out";
 const HACKCASE_PREFIX: &str = "Generated_";
 
+#[derive(thiserror::Error, Debug)]
+pub(crate) enum Error {
+    #[error("Failed to copy testcase files.")]
+    Copy(#[from] cpt_stdx::fs::Error),
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct Testcase {
     pub(crate) casename: String,
@@ -33,7 +39,7 @@ pub(crate) fn collect(dir: &Path) -> Vec<Testcase> {
     cases
 }
 
-pub(crate) fn new_hackcase(dir: &Path) -> Testcase {
+pub(crate) fn new_hackcase(dir: &Path) -> (Testcase, Testcase) {
     use std::collections::BTreeSet;
     let mut hackcases = BTreeSet::<String>::new();
     for cases in collect(dir) {
@@ -45,12 +51,29 @@ pub(crate) fn new_hackcase(dir: &Path) -> Testcase {
     loop {
         if !hackcases.contains(&no.to_string()) {
             let casename = format!("{}{}", HACKCASE_PREFIX, no);
-            return Testcase {
-                casename: casename.to_owned(),
-                input: dir.to_owned().join(casename.to_owned() + "." + INPUT_EXT),
-                output: Some(dir.to_owned().join(casename + "." + OUTPUT_EXT)),
+            let temp_dir = std::env::temp_dir();
+            let temp_case = Testcase {
+                casename: casename.clone(),
+                input: temp_dir.join(casename.clone() + "." + INPUT_EXT),
+                output: Some(temp_dir.join(casename.clone() + "." + OUTPUT_EXT)),
             };
+            let final_case = Testcase {
+                casename,
+                input: dir.to_owned().join(temp_case.casename.clone() + "." + INPUT_EXT),
+                output: Some(dir.to_owned().join(temp_case.casename.clone() + "." + OUTPUT_EXT)),
+            };
+            return (temp_case, final_case);
         }
         no += 1;
+    }
+}
+
+impl Testcase {
+    pub(crate) fn copy_to(&self, target: &Testcase) -> Result<(), Error> {
+        cpt_stdx::fs::copy(&self.input, &target.input)?;
+        if let (Some(src_output), Some(target_output)) = (&self.output, &target.output) {
+            cpt_stdx::fs::copy(src_output, target_output)?;
+        }
+        Ok(())
     }
 }

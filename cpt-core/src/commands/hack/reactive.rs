@@ -24,6 +24,8 @@ pub(crate) enum Error {
     GenerationFailed(#[source] crate::generator::Error),
     #[error("Judge failed.")]
     JudgeFailed(#[source] crate::judge::reactive::Error),
+    #[error("Failed to copy testcase.")]
+    TestcaseCopy(#[from] crate::testcase::Error),
 }
 
 pub(super) fn run(args: &Args) -> Result<(), Error> {
@@ -42,17 +44,18 @@ pub(super) fn run(args: &Args) -> Result<(), Error> {
     let timelimit_program = args.timelimit_ms.unwrap_or(10000);
     let timelimit_generator = timelimit_program * 10;
     let mut trial = 0;
-    let case = crate::testcase::new_hackcase(dir);
+    let (temp_case, final_case) = crate::testcase::new_hackcase(dir);
     loop {
         trial += 1;
         log::info!("[Batch Hack][Trial {}] Start", trial);
-        let case = generate(&case, &args.input_generator, &None, timelimit_generator)
+        let case = generate(&temp_case, &args.input_generator, &None, timelimit_generator)
             .map_err(Error::GenerationFailed)?;
 
         let verdict = judge(&args.command, &args.judge, case, timelimit_program, dir)
             .map_err(Error::JudgeFailed)?;
         log::info!("[Batch Hack][Trial {}] End: {}", trial, verdict);
         if !verdict.is_ac() {
+            temp_case.copy_to(&final_case)?;
             break;
         }
     }

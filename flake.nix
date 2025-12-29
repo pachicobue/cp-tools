@@ -1,14 +1,24 @@
 {
-  description = "competitive programming tool";
+  description = "競プロ用ツール";
 
-  # Add all your dependencies here
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-unstable";
-    blueprint.url = "github:numtide/blueprint";
-    blueprint.inputs.nixpkgs.follows = "nixpkgs";
     rust-overlay.url = "github:oxalica/rust-overlay";
+    flake-utils.url = "github:numtide/flake-utils";
   };
 
-  # Load the blueprint
-  outputs = inputs: inputs.blueprint { inherit inputs; };
+  outputs = {flake-utils, ...} @ inputs:
+    flake-utils.lib.eachDefaultSystem (
+      system: let
+        args = {
+          inherit inputs;
+          inherit system;
+        };
+      in {
+        nixosConfigurations = import ./nixos-configuration.nix args;
+        packages = import ./package.nix args;
+        # checks = import ./check.nix args;
+        devShells = import ./devshell.nix args;
+      }
+    );
 }

@@ -1,52 +1,51 @@
 # cp-tools(cpt)
 
-Command line tools for competitive programming.
+競プロ用コマンドラインツール
 
-## Goals
+## 目標
 
-### Test helper
+### コア機能
 
-- Test samples
-    - [x] Batch
-    - [x] Special judge
-    - [x] Reactive
+- サンプルチェック
+    - [x] 通常ジャッジ
+    - [x] スペシャルジャッジ
+    - [x] リアクティブ
     - [ ] Run twice
-- Hackcase generation(WA/RE/TLE)
-    - [x] Batch
-    - [x] Special judge
-    - [x] Reactive
+- Hackケース生成(WA/RE/TLE)
+    - [x] 通常ジャッジ
+    - [x] スペシャルジャッジ
+    - [x] リアクティブ
     - [ ] Run twice
 
-### Expand library code (a.k.a `Bundle`)
+### その他ツール
 
-- Expansion command binaries
+- ライブラリ展開
     - [x] C++
-        - Based on `clang++ -E` command.
+        - `clang++ -E` コマンドベース
 
-## Ambitious Goals
+## 出来たらいいな
 
-- Network commands
-    - Download samples
-    - Submission
+- ネットワークコマンド
+    - サンプルダウンロード
+    - 提出
 
-## Installation
+## インストール
 
 - `cargo install --path cpt-core`
 - `cargo install --path cpt-extra`
 
-## Usage
+## 使い方
 
-There are some hidden (not neccesary) arguments.
-(eg) `--tl` for timelimit.
+Optional なパラメータがありがち。
+（例）`--tl` によるTimeLimit指定（ちなみにMemoryLimit指定はできない）
 
-Check `cpt --help` for more information.
+詳細は `cpt --help` をチェック。
 
-### Test 
+### 自動テスト機能
 
-#### Batch (Most basic test)
+#### 通常テスト
 
-**(Notice) Judge with absolute/relative error is not supported.
-Use special judge for this situation.**
+**（注意）誤差を許容するテストは非サポート。スペシャルジャッジとしてツールを使用すること**
 
 ```sh
 cpt test batch -c "./main.exe" -d test
@@ -55,12 +54,13 @@ cpt test batch -c "./main.exe" -d test
 cpt t b -c "./main.exe" -d test
 ```
 
-- arguments
-    - `-c`: command
-    - `-d`: directory path which contains testcases
-        - Intermediate files (including debug outputs from stderr) will be stored in this directory.
+- パラメータ
+    - `-c`: プログラム実行コマンド
+        - プログラム
+    - `-d`: テストケースのディレクトリパス
+        - 中間ファイル（標準エラー出力など）もここに格納される
 
-#### Special judge
+#### スペシャルジャッジ
 
 ```sh
 cpt test batch -c "./main.exe" -j "./judge.exe" -d test
@@ -69,14 +69,16 @@ cpt test batch -c "./main.exe" -j "./judge.exe" -d test
 cpt t s -c "./main.exe" -j "./judge.exe" -d test
 ```
 
-- arguments
-    - `-c`: command
-    - `-j`: judge command
-        - Judge command should take two arguments.  
-        - `<judge_command> <input_path> <output_path>`
-    - `-d`: directory path which contains testcases
+- パラメータ
+    - `-c`: プログラム実行コマンド
+    - `-j`: ジャッジコマンド
+        - ジャッジは２つの引数を受け取る
+            - `<judge_command> <input_path> <output_path>`
+               - `input_path`: テスト入力パス
+               - `output_path`: プログラムによる出力パス
+    - `-d`: テストケースのディレクトリパス
 
-#### Reactive judge
+#### リアクティブ
 
 
 ```sh
@@ -86,16 +88,18 @@ cpt test reactive -c "./main.exe" -j "./judge.exe" -d test
 cpt t r -c "./main.exe" -j "./judge.exe" -d test
 ```
 
-- arguments
-    - `-c`: command
-    - `-j`: judge command
-        - Judge command should take one arguments.  
-        - `<judge_command> <input_path>`
-    - `-d`: directory path which contains testcases
+- パラメータ
+    - `-c`: プログラム実行コマンド
+    - `-j`: ジャッジコマンド
+        - ジャッジはプログラムの標準出力を標準入力からインタラクティブに受け取る
+        - ジャッジは１つの引数を受け取る
+            - `<judge_command> <input_path>`
+               - `input_path`: テスト入力パス
+    - `-d`: テストケースのディレクトリパス
 
-### Hackcase Generation
+### Hackケース生成
 
-#### Batch
+#### 通常テスト
 
 ```sh
 cpt hack batch -c "./main.exe" -i "./gen_input.exe" -d test
@@ -104,13 +108,15 @@ cpt hack batch -c "./main.exe" -i "./gen_input.exe" -d test
 cpt t b -c "./main.exe" -i "./gen_input.exe" -d test
 ```
 
-- arguments
-    - `-c`: command
-    - `-i`: input generator
-    - `-o`: *(Optional)* output generator
-    - `-d`: directory path to generate testcase
+- パラメータ
+    - `-c`: プログラム実行コマンド
+    - `-i`: 入力生成コマンド
+    - `-o`: *(Optional)* 出力生成コマンド
+        - 指定しない場合は `WA` の確認はできない
+        - 出力生成は引数を受け取らず、入力データを標準入力から受け取る（プログラム本体と同じ）
+    - `-d`: テストケース生成先ディレクトリパス
 
-#### Special judge
+#### スペシャルジャッジ
 
 ```sh
 cpt hack special -c "./main.exe" -i "./gen_input.exe" -j "./judge.exe" -d test
@@ -119,14 +125,19 @@ cpt hack special -c "./main.exe" -i "./gen_input.exe" -j "./judge.exe" -d test
 cpt h s -c "./main.exe" -i "./gen_input.exe" -j "./judge.exe" -d test
 ```
 
-- arguments
-    - `-c`: command
-    - `-i`: input generator
-    - `-j`: judge command
-        - `<judge_command> <input_path> <output_path>`
-    - `-d`: directory path which contains testcases
+- パラメータ
+    - `-c`: プログラム実行コマンド
+    - `-i`: 入力生成コマンド
+    - `-j`: *(Optional)* ジャッジコマンド
+        - 指定しない場合は `WA` の確認はできない
+        - ジャッジは２つの引数を受け取る
+            - `<judge_command> <input_path> <output_path>`
+               - `input_path`: テスト入力パス
+               - `output_path`: プログラムによる出力パス
+        - 出力生成は引数を受け取らず、入力データを標準入力から受け取る（プログラム本体と同じ）
+    - `-d`: テストケース生成先ディレクトリパス
 
-#### Reactive judge
+#### リアクティブ
 
 ```sh
 cpt hack reactive -c "./main.exe" -i "./gen_input.exe" -j "./judge.exe" -d test
@@ -135,18 +146,20 @@ cpt hack reactive -c "./main.exe" -i "./gen_input.exe" -j "./judge.exe" -d test
 cpt t r -c "./main.exe" -j "./judge.exe" -d test
 ```
 
-- arguments
-    - `-c`: command
-    - `-i`: input generator
-    - `-j`: judge command
-        - `<judge_command> <input_path>`
-    - `-d`: directory path which contains testcases
+- パラメータ
+    - `-c`: プログラム実行コマンド
+    - `-j`: ジャッジコマンド
+        - ジャッジはプログラムの標準出力を標準入力からインタラクティブに受け取る
+        - ジャッジは１つの引数を受け取る
+            - `<judge_command> <input_path>`
+               - `input_path`: テスト入力パス
+    - `-d`: テストケースのディレクトリパス
 
 ## Credits
 
-See [CREDITS.toml](CREDITS.toml). 
+[CREDITS.toml](CREDITS.toml) 参照（自動生成）。
 
-This tool is heavily inspired by [oj](https://github.com/online-judge-tools/oj) (Just a reinventing of the wheel...).
+本ツールは [oj](https://github.com/online-judge-tools/oj) の再開発。
 
 ## License
 

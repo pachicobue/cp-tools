@@ -15,7 +15,7 @@
           inherit system;
         };
       in {
-        nixosConfigurations = import ./nixos-configuration.nix args;
+        # nixosConfigurations = import ./nixos-configuration.nix args;
         packages = import ./package.nix args;
         # checks = import ./check.nix args;
         devShells = import ./devshell.nix args;
